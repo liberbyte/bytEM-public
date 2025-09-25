@@ -275,7 +275,17 @@ sudo docker exec -it bytem-synapse register_new_matrix_user \
 ```
 
 
-# notes from chat:
+# notes from chat (UP whitelisting):
 I have to create the script for IP allowing list in the nginx like we have added in of environment and cities bytem? but we had done manually as you said.
 
 you can do the script if time allows but suggest there are instructions for the client to configure the IPs accordingly -> these needs to go into ahmad 's instructions
+
+pradeep
+for setting up the bytem4 we will required this much folders only rest docker image will look it so I will give this all from gitub only and let me confirm from Tero I need to create the new repo for client use only so that client can take clone for some folder and the folder and files are:
+
+certbot.sh
+config_template
+docker-compose-client.yaml
+env_setup.sh
+.env.template
+install.sh
