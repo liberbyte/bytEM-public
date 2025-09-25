@@ -6,18 +6,14 @@ bytEM public repo - bytEM from Liberbyte GmbH
 This documentation goes over the approach taken to make bytEM easily deployable and upgradable using containerization and automation methodologies.
 
 
-# Objectives -
+# Objectives and Strategy:
 
 - Automating the byteEM setup process.
 - Minimizing manual efforts
 - Automating bytEM Deployment.
 - Making individual bytEM installations / platform upgradable.
 
-# Strategy -
-
-The approach taken to achieve the desired objectives includes the use of various
-
-automation, packaging and orchestration techniques.
+The approach taken to achieve the desired objectives includes the use of various automation, packaging and orchestration techniques.
 
 - We have opted for Docker to package the application.
 - For container orchestration, we have used docker compose.
@@ -28,21 +24,7 @@ automation, packaging and orchestration techniques.
 
 
 
-## Packaging the application (Docker) -
-
-- There are three
-  - Dockerfiles. (Dockerfile.backend, or exchange)
-  - Dockerfile.bot) and
-  - Dockerfile.bytemApp)
-- The Docker image created from Dockerfile.backend will run the Exchange server.
-- The Docker image created from Dockerfile.bot will run the bot(s)
-- The Docker image created from Dockerfile.bytemApp will run the bytemApp, which is the react front-end served using Nginx. This container also has certbot installed to be used for automating the generation of SSL certificates.
-
-## Container orchestration -
-
-- To orchestrate the containers in bytEM application stack, we have used docker compose. We have written a docker-compose.yaml file to manage the required containers.
-
-### Services (Containers) -
+## Packaging the application (Dockerimages) -
 
 bytEM docker images to be used in installation
 
@@ -58,18 +40,81 @@ rabbitmq               3-management-alpine   699b570c4b87   12 months ago       
 solr                   9.5.0                 579a59112bcc   19 months ago       580MB
 ```
 
-- The names of current services (containers) in the stack are as follows -
+- There are three docker files to create images
+  - Dockerfiles.backend (Dockerfile.backend, or exchange)
+  - Dockerfile.bot) and
+  - Dockerfile.bytemApp)
+- The Docker image created from Dockerfile.backend will run the Exchange server.
+- The Docker image created from Dockerfile.bot will run the bot(s)
+- The Docker image created from Dockerfile.bytemApp will run the bytemApp, which is the react front-end served using Nginx. This container also has certbot installed to be used for automating the generation of SSL certificates.
 
-| Sr. No. | Service (Container) Name | Details |
-| --- | --- | --- |
-| 1.  | bytem-app | React Front-end |
-| 2.  | bytem-be | Exchange server (node js?) |
-| 3.  | bytem-bot | Bot(s) |
-| 4.  | bytem-mongo | MongoDB database (legacy and to be removed later from the stack and docker |
-| 5.  | bytem-rabbitmq | RabbitMQ queues |
-| 6.  | bytem-solr | apache solr (search engine) |
-| 7.  | bytem-synapse | Matrix Synapse server |
-| 8.  | bytem-synapse-db | Postgres DB used by<br><br>matrix synapse server |
+## Container orchestration -
+
+- To orchestrate the containers in bytEM application stack, we have used docker compose. We have written a docker-compose.yaml file to create the required containers from the images
+
+### Services (Containers) and Ports Binding:
+
+- The names of current services (containers) in the stack are as follows -
+- The Ports used by current services (containers) in the stack and their bindings with the host port are as follows. The format is - _(&lt;host_port&gt;:&lt;container_port&gt;)_ -
+
+<table>
+<thead>
+<tr>
+<th>Sr. No.</th>
+<th>Service (Container) Name</th>
+<th>Details</th>
+<th>Port Binding</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.</td>
+<td>bytem-app</td>
+<td>React Front-end</td>
+<td>80:80<br>443:443</td>
+</tr>
+<tr>
+<td>2.</td>
+<td>bytem-be</td>
+<td>Exchange server (node js?)</td>
+<td>9999:9999 (FE port)<br>3000:3000 (Exchange port)</td>
+</tr>
+<tr>
+<td>3.</td>
+<td>bytem-bot</td>
+<td>Bot(s)</td>
+<td>4000:4000</td>
+</tr>
+<tr>
+<td>4.</td>
+<td>bytem-mongo</td>
+<td>MongoDB database (legacy and to be removed later from the stack and docker)</td>
+<td>27017:27017</td>
+</tr>
+<tr>
+<td>5.</td>
+<td>bytem-rabbitmq</td>
+<td>RabbitMQ queues</td>
+<td>5672:5672 (Server port)<br>15672:15672 (UI port)</td>
+</tr>
+<tr>
+<td>6.</td>
+<td>bytem-solr</td>
+<td>Apache Solr (search engine)</td>
+<td>8983:8983</td>
+</tr>
+<tr>
+<td>7.</td>
+<td>bytem-synapse</td>
+<td>Matrix Synapse server</td>
+<td>8008:8008 (Default)<br>8009:8009 (sliding sync)<br>8448:8448 (federation)</td>
+</tr>
+<tr>
+<td>8.</td>
+<td>bytem-synapse-db</td>
+<td>Postgres DB used by matrix synapse server</td>
+<td>5432:5432</td>
+</tr>
+</tbody></table>
 
 
 
@@ -89,20 +134,6 @@ Apart from above named volumes, We have some directories mounted from host machi
 - **certbot/ -** This directory is created on the run of the container bytemApp. This directory will include generated SSL Certificates. This directory is mounted inside bytem-app container.
 - **.env.bytem -** This is env variables file used to determine the config options needed for the bytEM to function. This file is generated in the root of the project when we run the first bash script (env_setup.sh) to generate .env.bytem file and synapse and nginx config files. This file is mounted inside the containers bytem-be and bytem-bot.
 
-### Ports -
-
-The Ports used by current services (containers) in the stack and their bindings with the host port are as follows. The format is - _(&lt;host_port&gt;:&lt;container_port&gt;)_ -
-
-| Sr. No. | Container (service) | Port Binding |
-| --- | --- | --- |
-| 1.  | bytem-app | 80:80<br><br>443:443 |
-| 2.  | bytem-be | 9999:9999 (FE port)<br><br>3000:3000 (Exchange port) |
-| 3.  | bytem-bot | 4000:4000 |
-| 4.  | bytem-mongo | 27017:27017 |
-| 5.  | bytem-rabbitmq | 5672:5672 (Server port)<br><br>15672:15672 (UI port) |
-| 6.  | bytem-solr | 8983:8983 |
-| 7.  | bytem-synapse | 8008:8008 (Default)<br><br>8009:8009 (sliding sync)<br><br>8448:8448 (federation) |
-| 8.  | bytem-synapse-db | 5432:5432 |
 
 ## Automation -
 
@@ -275,7 +306,7 @@ sudo docker exec -it bytem-synapse register_new_matrix_user \
 ```
 
 
-# notes from chat (UP whitelisting):
+# notes from chat (IP whitelisting) TODO:
 I have to create the script for IP allowing list in the nginx like we have added in of environment and cities bytem? but we had done manually as you said.
 
 you can do the script if time allows but suggest there are instructions for the client to configure the IPs accordingly -> these needs to go into ahmad 's instructions
