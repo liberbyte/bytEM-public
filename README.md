@@ -228,7 +228,7 @@ curl -s -X POST \
 ```
 
 
-# 4.  Creating Admin User "test"
+### 4.  Creating Admin User "test"
 
  the command to register the user "test" with admin privileges:
 
@@ -247,7 +247,7 @@ This command:
 - Makes the user an admin
 - Registers on VM Matrix server
 
-## 5. Alternative (Interactive Method)
+### 5. Alternative (Interactive Method)
 
 ```bash
 sudo docker exec -it bytem-synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
