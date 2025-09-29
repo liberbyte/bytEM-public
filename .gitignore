@@ -1,0 +1,35 @@
+# Environment files
+.env.bytem
+.env.*
+
+# Generated config files
+generated_config_files/
+certbot/
+solr/
+
+# Docker volumes and data
+*-data/
+*/data/
+
+# Logs
+*.log
+logs/
+
+# Node modules (if any)
+node_modules/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# VM-specific files
+.ssh/
+.cache/
+.docker/
+.npm/
+.local/
+
+# Backup files
+*.bk
+*.backup

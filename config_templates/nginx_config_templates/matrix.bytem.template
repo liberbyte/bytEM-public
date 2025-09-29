@@ -1,0 +1,30 @@
+server {
+
+        listen       80;
+        listen  [::]:80;
+        server_name ${MATRIX_DOMAIN};
+
+        location /.well-known/matrix/server {
+                default_type application/json;
+                add_header Access-Control-Allow-Origin *;
+                return 200 '{"m.server": "${MATRIX_DOMAIN}:443"}';
+        }
+
+        location /_matrix {
+                proxy_pass http://bytem-synapse:8008;
+                proxy_set_header X-Forwarded-For $remote_addr;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Host $host;
+                client_max_body_size 2G;
+        }
+
+        location /_synapse {
+                proxy_pass http://bytem-synapse:8008;
+                proxy_set_header X-Forwarded-For $remote_addr;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Host $host;
+                client_max_body_size 2G;
+        }
+#    listen 8448 ssl http2 default_server;
+#    listen [::]:8448 ssl http2 default_server;
+}

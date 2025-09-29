@@ -1,0 +1,106 @@
+# Configuration file for Synapse.
+#
+# This is a YAML file: see [1] for a quick introduction. Note in particular
+# that *indentation is important*: all the elements of a list or dictionary
+# should have the same indentation.
+#
+# [1] https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html
+#
+# For more information on how to configure Synapse, including a complete accounting of
+# each option, go to docs/usage/configuration/config_documentation.md or
+# https://element-hq.github.io/synapse/latest/usage/configuration/config_documentation.html
+#
+# This is set in /etc/matrix-synapse/conf.d/server_name.yaml for Debian installations.
+server_name: "${MATRIX_DOMAIN}"
+enable_registration: true
+allow_guest_access: true
+enable_guest_access: true
+enable_registration_without_verification: true
+expire_access_token: true
+guest_lifetime: 1h
+ 
+report_stats: false
+
+pid_file: "/data/homeserver.pid"
+
+enable_federation: true
+federation_port: 8448
+federation_domain_whitelist:
+  - matrix.bytem1.liberbyte.app
+  # - matrix.bytem.liberbyte.app
+  - matrix.org
+  - ${MATRIX_DOMAIN}
+federation_client_minimum_tls_version: 1.2
+allow_public_rooms_over_federation: true
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    # bind_addresses: ['::1', '127.0.0.1']
+    resources:
+      - names: [client, federation]
+        compress: false
+    additional_headers:
+      Access-Control-Allow-Origin: "*"
+      Access-Control-Allow-Methods: "GET, POST, PUT, DELETE, OPTIONS"
+      Access-Control-Allow-Headers: "Authorization, Content-Type"
+
+database:
+  name: psycopg2
+  args:
+    user: synapse
+    password: ${SYNAPSE_POSTGRES_PASSWORD}
+    dbname: synapse
+    host: bytem-synapse-db #you can use docker inspect container_name to fill host section
+    cp_min: 5
+    cp_max: 10
+
+log_config: "/data/log.config"
+logging:
+    level: DEBUG
+
+media_store_path: /data/media_store
+enable_authenticated_media: true
+# signing_key_path: "/etc/matrix-synapse/homeserver.signing.key" >> Not needed as its automatically created.
+registration_shared_secret: ;oaYvQ&CWwUCxgq23+M==z1+2C5XEa-oYAX6JflwA@^200wC*2
+macaroon_secret_key: dK3;iEEZT+RFzfI6r:+j1c_P.rd3zL-x&T,dP6dFpv7cxv:lpq
+
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+experimental_features:
+  msc2946_enabled: true
+  msc3575_enabled: true
+
+rc_joins:
+  local:
+    per_second: 10
+    burst_count: 2000
+  remote:
+    per_second: 10
+    burst_count: 2000
+
+rc_joins_per_room:
+  per_second: 10
+  burst_count: 2000
+
+rc_invites:
+  per_room:
+      per_second: 10
+      burst_count: 2000
+  per_user:
+      per_second: 10
+      burst_count: 2000
+  per_issuer:
+      per_second: 10
+      burst_count: 2000
+
+rc_login:
+  per_second: 0.17  # Limits to 1 login per 6 seconds
+  burst_count: 5    # Allows up to 5 login attempts in a burst
+
+rc_registration:
+  per_second: 0.33  # Limits to 1 registration every 3 seconds
+  burst_count: 5    # Allows up to 5 registrations in a burst

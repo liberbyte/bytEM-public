@@ -1,0 +1,54 @@
+server {
+
+        listen       80;
+        listen  [::]:80;
+        server_name ${BYTEM_DOMAIN};
+
+        error_log /var/log/nginx/${BYTEM_DOMAIN}.log notice;
+        
+        underscores_in_headers on;
+
+      # Gzip Compression for performance
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+        gzip_vary on;
+        gzip_min_length 1024;
+
+        location / {
+              root /usr/share/nginx/html;
+              try_files $uri $uri/ /index.html;
+        }
+
+        location /hub {
+            proxy_pass http://bytem-be:3000/hub;
+            proxy_buffering on;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port $server_port;
+            proxy_set_header Host ${BYTEM_DOMAIN};
+            proxy_set_header X-Custom-Header "matrix_server";
+            proxy_pass_request_headers on;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+         }
+
+        location /solr/  {
+                proxy_pass http://bytem-solr:8983/solr/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /hub/socket/ {
+                proxy_pass http://bytem-be:3000; # Change this to your backend port
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "Upgrade";
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

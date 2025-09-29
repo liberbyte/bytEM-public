@@ -1,0 +1,190 @@
+version: '3.6'
+
+services:
+
+  bytem-app:
+    image: liberbyteadmin/bytem:app
+    container_name: bytem-app
+    hostname: bytem-app
+    restart: "always"
+      #build:
+      #context: .
+      # dockerfile: ./Dockerfile.bytemApp
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./generated_config_files/nginx_config:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    networks:
+      - bytem-network
+
+  bytem-be:
+    image: liberbyteadmin/bytem:be
+    container_name: bytem-be
+    hostname: bytem-be
+    restart: always
+    depends_on:
+      - bytem-mongo
+        #build:
+        #context: .
+        #dockerfile: ./Dockerfile.backend
+    ports:
+      - 9999:9999
+      - 3000:3000
+    volumes:
+      # - ./solr/data:/app/solr/data
+      - ./.env.bytem:/app/.env.bytem
+    networks:
+      - bytem-network
+
+  bytem-bot:
+    image: liberbyteadmin/bytem:bot
+    container_name: bytem-bot
+    hostname: bytem-bot
+    restart: always
+    depends_on:
+      - bytem-mongo
+        #build:
+        #context: .
+        #dockerfile: ./Dockerfile.bot
+    ports:
+      - 4000:4000
+    volumes:
+      - ./solr/data:/solr/data
+      - ./.env.bytem:/.env.bytem
+    networks:
+      - bytem-network
+
+  bytem-mongo:
+    image: mongo
+    container_name: bytem-mongo
+    hostname: bytem-mongo
+    restart: always
+    env_file:
+      - .env.bytem
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=bytem
+    #   - MONGO_INITDB_ROOT_PASSWORD=bytem
+    ports:
+      - 27017:27017
+    volumes:
+      - bytem-mongo-data:/data/db
+    networks:
+      - bytem-network
+
+  bytem-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: bytem-rabbitmq
+    hostname: bytem-rabbitmq
+    restart: always
+    env_file:
+      - .env.bytem
+    # environment: 
+    #   - RABBITMQ_DEFAULT_USER=bytem
+    #   - RABBITMQ_DEFAULT_PASS=bytem
+    #   - RABBITMQ_DEFAULT_VHOST=bytem
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - bytem-rabbitmq-data:/var/lib/rabbitmq/
+      - bytem-rabbitmq-log:/var/log/rabbitmq
+    networks:
+      - bytem-network
+
+  bytem-solr:
+    image: solr:9.5.0
+    container_name: bytem-solr
+    hostname: bytem-solr
+    restart: always
+    user: root
+    depends_on:
+      - bytem-be
+    ports:
+     - "8983:8983"
+    volumes:
+      - ./solr:/var/solr
+    command:
+      - -force
+      # - solr-precreate
+      # - gettingstarted
+    networks:
+      - bytem-network
+
+  bytem-synapse:
+    image: liberbyteadmin/bytem:synapse
+    container_name: bytem-synapse
+    hostname: bytem-synapse
+    restart: always
+    depends_on:
+      - bytem-synapse-db
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+    ports:
+      - 8008:8008
+      - 8009:8009
+      - 8448:8448
+    volumes:
+      - ./generated_config_files/synapse_config:/data
+    networks:
+      - bytem-network
+  
+  bytem-synapse-db:
+    image: docker.io/postgres:14-alpine
+    container_name: bytem-synapse-db
+    hostname: bytem-synapse-db
+    restart: always
+    env_file:
+      - .env.bytem
+    environment:
+      # - POSTGRES_USER=synapse
+      # - POSTGRES_PASSWORD=bytemsynapse
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - 5432:5432
+    volumes:
+      - bytem-synapse-db-data:/var/lib/postgresql/data
+    networks:
+      - bytem-network
+
+  bytem-promtail:
+    image: grafana/promtail:2.9.0
+    container_name: bytem-promtail
+    hostname: bytem-promtail
+    restart: always
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - bytem-network
+
+  bytem-pwa:
+    image: liberbyteadmin/bytem:pwa
+    container_name: bytem-pwa
+    hostname: bytem-pwa
+    restart: always
+    ports:
+      - 8002:80
+    networks:
+      - bytem-network
+
+networks:
+  bytem-network:
+    name: bytem-network
+    driver: bridge
+
+volumes:
+  bytem-mongo-data:
+    name: bytem-mongo-data
+  bytem-rabbitmq-data:
+    name: bytem-rabbitmq-data
+  bytem-rabbitmq-log:
+    name: bytem-rabbitmq-log
+  # bytem-solr-data:
+  #   name: bytem-solr-data
+  bytem-synapse-db-data:
+    name: bytem-synapse-db-data
