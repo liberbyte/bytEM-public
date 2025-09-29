@@ -45,7 +45,7 @@ log "Starting Docker containers..."
 MAX_RETRIES=3
 RETRY_DELAY=20
 for i in $(seq 1 $MAX_RETRIES); do
-    if sudo docker compose -f docker-compose-client.yaml up -d --build; then
+    if sudo docker-compose -f docker-compose-client.yaml up -d --build; then
         log "Docker containers started successfully."
         break
     elif [[ $i -eq $MAX_RETRIES ]]; then
@@ -87,13 +87,6 @@ if sudo docker image prune -f; then
     log "Unused Docker images removed successfully."
 else
     log "Failed to remove unused Docker images."
-fi
-
-if sudo docker buildx prune -f; then
-    log "Docker Cache removed successfully."
-else
-    log "Failed to remove Docker Cache."
-    exit 1
 fi
 
 header_message "Script completed successfully."
