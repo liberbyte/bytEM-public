@@ -18,8 +18,11 @@ header_message() {
 
 # Source the .env.bytem file
 set +u
-source .env.bytem 2>/dev/null || { echo "Error: .env.bytem file not found. Please run env_setup.sh first."; exit 1; }
+source .env.bytem
 set -u
+
+# Variables
+source .env.bytem 2>/dev/null || { echo "Error: .env.bytem file not found. Please run env_setup.sh first."; exit 1; }
 
 # Extract domain info from environment variables
 BYTEM_DOMAIN=${EXCHANGE_SERVER_HOSTNAME}
@@ -35,13 +38,7 @@ RESTART_CONTAINER="bytem-be bytem-bot"
 # Prompt or fetch environment variables
 header_message "Enter the information needed to generate SSL certificate"
 
-if [ -z "${EMAIL:-}" ]; then
-  read -p "Enter your email for Certificate update Notifications: " EMAIL
-fi
-
-# Set domain variables from .env.bytem
-BYTEM_DOMAIN=${EXCHANGE_SERVER_HOSTNAME}
-MATRIX_DOMAIN=${MATRIX_APP}
+EMAIL=${EMAIL:-$(read -p "Enter your email for Certificate update Notifications: " REPLY && echo "$REPLY")}
 # DOMAIN_NAME=${DOMAIN_NAME:-$(read -p "Enter your domain which you are using to deploy bytem (e.g., example.com): " REPLY && echo "$REPLY")}
 
 # Validate the domain name (format: <domain>.<extension>, no prefixes like www.)
