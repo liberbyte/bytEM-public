@@ -1,76 +1,13 @@
-sudo apt update
-sudo apt install docker
-sudo apt install docker-compose
-docker login
 
-./env_setup
-domain
-credentials
-
-./install.sh
-
-
-==================================================
 
 
 # bytEM-public
 bytEM public repo - bytEM from Liberbyte GmbH 
 
 
-What to do is 
-
-1. env-setup: 
-when prompted enter the following:
-
-subdomain: liberbyte.app
-prefix: bm4
-custome credentials for
 
 
-![alt text](documentation_screenshots/image_1.png)
 
-2. login to docker hub
-
-![alt text](documentation_screenshots/image_2.png)
-
-3. install.sh
-pull all images and running
-
-
-![alt text](documentation_screenshots/image_3.png)
-
-4. we see all docker containers are up and running successfully
-
-![alt text](documentation_screenshots/image_4.png)
-
-
-5.
-
-What does certbot.sh do?
-Generates SSL certificates for your domain using Certbot (inside the bytem-app container).
-Configures Nginx in the container to use the new certificates.
-Generates a login token and updates .env.bytem.
-Overrides Matrix Synapse rate limits for smoother operation.
-Restarts necessary containers to apply the changes.
-When to run certbot.sh?
-Run it after:
-env_setup.sh (environment and config generation)
-install.sh (all containers are up and running)
-
-env_setup.sh (environment and config generation)
-install.sh (all containers are up and running)
-How to run it?
-./certbot.sh
-or, if needed:
-sudo ./certbot.sh
-
-
-created ssl certificates for bytem4 and matrix bytem4
-IP whitelisting for bytem.app where grafana is setup
-http://94.237.103.252:3000/
-grafana and loki
-
-no need for connection 
 
 
 
@@ -80,7 +17,14 @@ no need for connection
 - The main goal for these scripts is to generate the config files from the template files, run the containers and required first run commands, and generate ssl certificates.
 - All these scripts perform a certain set of tasks. Details of the tasks performed are as below -
 
-### env_setup.sh -
+
+### install docker and docker-compose
+
+- sudo apt update
+- sudo apt install docker
+- sudo apt install docker-compose
+
+### 1. env_setup.sh -
 
 This script is the first one to run when setting up the bytEM application. The main goal of this script is to generate the env variables and other config files to be used by the application. This script asks the user to input required values. The details of the tasks performed by this script are as below -
 
@@ -95,7 +39,28 @@ _'generated_config_files/synapse_config'_
 - Generation of '.env.bytem' file from the template file '.env.template' .
 - If there is already a file present by the name of '.env.bytem' (from old installation or in case of updating env variables according to new '.env.template' file), the old .env.bytem will be backed up by asking the user if he wants to back up the old file or not.
 
-### install.sh -
+run this script first by sudo ./env_setup.sh
+
+when prompted enter the following:
+
+subdomain: liberbyte.app
+
+prefix: bm4
+
+custome credentials for bot user, mongodb, rabbitmq, synapse, etc ...
+
+
+
+![alt text](documentation_screenshots/image_1.png)
+
+
+### 2. login to docker hub
+
+
+![alt text](documentation_screenshots/image_2.png)
+
+
+### 3. install.sh -
 
 This script is the second step to run when setting up the bytEM application. The main goal of this script is to run all the containers in the bytEM stack in docker-compose.yaml, and register first admin user for matrix synapse. The details of the tasks performed by this script are as below -
 
@@ -104,7 +69,20 @@ This script is the second step to run when setting up the bytEM application. The
 - Register the first matrix synapse admin user by executing 'register_new_matrix_user' command inside 'bytem-synapse container'
 - Restart the container bytem-be and bytem-bot for the changes to take effect
 
-### certbot.sh -
+
+pull all images and runs containers
+
+
+![alt text](documentation_screenshots/image_3.png)
+
+
+### 4. check the docker containers
+
+we see all docker containers are up and running successfully
+
+![alt text](documentation_screenshots/image_4.png)
+
+### 5. certbot.sh -
 
 This script is the third and final step to run when setting up the bytEM application. The goal of this script is to perform 3 tasks -
 
@@ -119,6 +97,13 @@ The details of the tasks performed by this script are as below -
 - Captures that token and places that token in the .env.bytem file which we generate in the first script.
 - Overrides the ratelimit of matrix synapse server by executing some commands in bytem-synapse container and calling the 'override_ratelimit' endpoint of synapse.
 - Restarts bytem-be and bytem-bot container for the changes to take effect.
+
+ What does certbot.sh do?
+- Generates SSL certificates for your domain using Certbot (inside the bytem-app container).
+- Configures Nginx in the container to use the new certificates.
+- Generates a login token and updates .env.bytem.
+- Overrides Matrix Synapse rate limits for smoother operation.
+- Restarts necessary containers to apply the changes.
 
 
 
@@ -393,3 +378,14 @@ docker-compose-client.yaml
 env_setup.sh
 .env.template
 install.sh
+
+
+
+created ssl certificates for bytem4 and matrix bytem4
+IP whitelisting for bytem.app where grafana is setup
+http://94.237.103.252:3000/
+grafana and loki
+
+no need for connection 
+
+
