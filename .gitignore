@@ -1,6 +1,7 @@
 # Environment files
 .env.bytem
 .env.*
+!.env.template
 
 # Generated config files
 generated_config_files/
