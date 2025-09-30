@@ -3,7 +3,7 @@ version: '3.6'
 services:
 
   bytem-app:
-    image: liberbyteadmin/bytem:app
+    image: liberbyteadmin/bytem:app-fixed
     container_name: bytem-app
     hostname: bytem-app
     restart: "always"
@@ -21,12 +21,14 @@ services:
       - bytem-network
 
   bytem-be:
-    image: liberbyteadmin/bytem:be
+    image: liberbyteadmin/bytem:be-fixed
     container_name: bytem-be
     hostname: bytem-be
     restart: always
     depends_on:
-      - bytem-mongo
+      - bytem-synapse
+    env_file:
+      - .env.bytem
         #build:
         #context: .
         #dockerfile: ./Dockerfile.backend
@@ -40,12 +42,12 @@ services:
       - bytem-network
 
   bytem-bot:
-    image: liberbyteadmin/bytem:bot
+    image: liberbyteadmin/bytem:bot-latest
     container_name: bytem-bot
     hostname: bytem-bot
     restart: always
     depends_on:
-      - bytem-mongo
+      - bytem-synapse
         #build:
         #context: .
         #dockerfile: ./Dockerfile.bot
@@ -54,23 +56,6 @@ services:
     volumes:
       - ./solr/data:/solr/data
       - ./.env.bytem:/.env.bytem
-    networks:
-      - bytem-network
-
-  bytem-mongo:
-    image: mongo
-    container_name: bytem-mongo
-    hostname: bytem-mongo
-    restart: always
-    env_file:
-      - .env.bytem
-    # environment:
-    #   - MONGO_INITDB_ROOT_USERNAME=bytem
-    #   - MONGO_INITDB_ROOT_PASSWORD=bytem
-    ports:
-      - 27017:27017
-    volumes:
-      - bytem-mongo-data:/data/db
     networks:
       - bytem-network
 
@@ -178,8 +163,6 @@ networks:
     driver: bridge
 
 volumes:
-  bytem-mongo-data:
-    name: bytem-mongo-data
   bytem-rabbitmq-data:
     name: bytem-rabbitmq-data
   bytem-rabbitmq-log:

@@ -106,11 +106,11 @@ echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 
 [[ -n "${BOT_USER:-}" ]] || prompt_for_value BOT_USER "BOT_USER (Will be converted to lowercase automatically)"
     BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
-[[ -n "${MONGO_USER:-}" ]] || prompt_for_value MONGO_USER "MONGO_USER (User for MongoDB)"
-[[ -n "${MONGO_PASSWORD:-}" ]] || prompt_for_value MONGO_PASSWORD "MONGO_PASSWORD (Password for MongoDB)"
 [[ -n "${RABBITMQ_USERNAME:-}" ]] || prompt_for_value RABBITMQ_USERNAME "RABBITMQ_USERNAME (User for RabbitMQ)"
 [[ -n "${RABBITMQ_PASSWORD:-}" ]] || prompt_for_value RABBITMQ_PASSWORD "RABBITMQ_PASSWORD (Password for RabbitMQ)"
 [[ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]] || prompt_for_value SYNAPSE_POSTGRES_PASSWORD "SYNAPSE_POSTGRES_PASSWORD (Password for PostgresDB used by synapse container. User will be 'synapse')"
+[[ -n "${MATRIX_SSO_CLIENT_ID:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_ID "MATRIX_SSO_CLIENT_ID (Client ID for Matrix SSO)"
+[[ -n "${MATRIX_SSO_CLIENT_SECRET:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_SECRET "MATRIX_SSO_CLIENT_SECRET (Client Secret for Matrix SSO)"
 
 # Validate the domain name (format: <domain>.<extension>, no prefixes like www.)
 if [[ "$DOMAIN_NAME" =~ ^www\..* ]]; then
@@ -146,11 +146,11 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
             -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
             -e "s/\${BOT_USER}/$BOT_USER/g" \
-            -e "s/\${MONGO_USER}/$MONGO_USER/g" \
-            -e "s/\${MONGO_PASSWORD}/$MONGO_PASSWORD/g" \
             -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
             -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
             -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+            -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
+            -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
             "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
           echo -e "${BRIGHT_GREEN}----- NEW ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
           break
@@ -171,11 +171,11 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
       -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
       -e "s/\${BOT_USER}/$BOT_USER/g" \
-      -e "s/\${MONGO_USER}/$MONGO_USER/g" \
-      -e "s/\${MONGO_PASSWORD}/$MONGO_PASSWORD/g" \
       -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
       -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+      -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
+      -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
       "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
     echo -e "${BRIGHT_GREEN}----- ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
   fi
@@ -197,11 +197,11 @@ if [ -f "$HOMESERVER_TEMPLATE_FILE" ]; then
     -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
     -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
     -e "s/\${BOT_USER}/$BOT_USER/g" \
-    -e "s/\${MONGO_USER}/$MONGO_USER/g" \
-    -e "s/\${MONGO_PASSWORD}/$MONGO_PASSWORD/g" \
     -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
     -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
     -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+    -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
+    -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
     "$HOMESERVER_TEMPLATE_FILE" > "$HOMESERVER_OUTPUT_FILE"
   echo -e "${BRIGHT_GREEN}----- HOMESERVER CONFIG FILE GENERATED: $HOMESERVER_OUTPUT_FILE -----${NC}"
   cp "$HOMESERVER_LOG_FILE" "$GENERATED_DIR/synapse_config/"
@@ -234,11 +234,11 @@ for template in "${NGINX_TEMPLATES[@]}"; do
       -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
       -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
       -e "s/\${BOT_USER}/$BOT_USER/g" \
-      -e "s/\${MONGO_USER}/$MONGO_USER/g" \
-      -e "s/\${MONGO_PASSWORD}/$MONGO_PASSWORD/g" \
       -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
       -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+      -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
+      -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
       "$template" > "$output_file"
     echo -e "${GREEN}Generated file: $output_file${NC}"
   else

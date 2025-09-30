@@ -21,8 +21,7 @@ set +u
 source .env.bytem
 set -u
 
-# Variables
-source .env.bytem 2>/dev/null || { echo "Error: .env.bytem file not found. Please run env_setup.sh first."; exit 1; }
+# Variables already sourced above
 
 # Extract domain info from environment variables
 BYTEM_DOMAIN=${EXCHANGE_SERVER_HOSTNAME}
