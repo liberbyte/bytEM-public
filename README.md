@@ -326,3 +326,6 @@ Test login page by navigating to the example url
 
 ![alt text](documentation_screenshots/image_12.png)
 
+Test login by username and password you created
+
+![alt text](documentation_screenshots/image_13.png)
