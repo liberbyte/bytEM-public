@@ -67,7 +67,7 @@ when prompted enter the following:
 
 - Enter your subdomain (e.g., [liberbyte.app])
 - Enter your prefix (e.g., [bm4])
-- Custome credentials for bot user, rabbitmq, synapse, etc ...
+- Custom credentials for bot user, rabbitmq, synapse, etc ...
 
 <!-- ![alt text](documentation_screenshots/image_1.png) -->
 
@@ -127,7 +127,7 @@ This script is the third step to run when setting up the bytEM application. The 
 To keep your federation whitelist and `/solr` endpoint secure, run the whitelist sync script:
 
 ```bash
-sudo whitelist-sync.sh
+sudo ./whitelist-sync.sh
 ```
 
 ![alt text](documentation_screenshots/image_10.png)
@@ -138,25 +138,6 @@ This script will: -
 - Update your homeserver.yaml with the correct federation whitelist.
 - Restrict access to the /solr endpoint in Nginx so only bytEM servers can connect.
 - Reload the Nginx configuration inside the Docker container.
-
-<!-- 
-# Overview -
-
-This documentation goes over the approach taken to make bytEM easily deployable and upgradable using containerization and automation methodologies.
-
-
-# Objectives and Strategy:
-
-- Automating the byteEM setup process.
-- Minimizing manual efforts
-- Automating bytEM Deployment.
-- Making individual bytEM installations / platform upgradable.
-
-The approach taken to achieve the desired objectives includes the use of various automation, packaging and orchestration techniques.
-
-- We have opted for Docker to package the application.
-- For container orchestration, we have used docker compose.
-- For automation, we have used bash scripts. -->
 
 # More Details About bytEM Installation (Optional)
 
