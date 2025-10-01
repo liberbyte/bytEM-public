@@ -12,7 +12,9 @@ bytEM public repo - bytEM from Liberbyte GmbH
 3. **Run environment setup:** `sudo ./env_setup.sh`
 4. **Run installer:** `sudo ./install.sh`
 5. **Run SSL setup:** `sudo ./certbot.sh`
-
+6. **Run whitelist sync:** `sudo ./whitelist-sync.sh`
+7. **Create your first bytEM (Matrix) user**
+8. **Test your installation (Nginx, bytEM login page, user login)**
 ---
 
 ## Prerequisites
@@ -139,14 +141,14 @@ This script will: -
 - Restrict access to the /solr endpoint in Nginx so only bytEM servers can connect.
 - Reload the Nginx configuration inside the Docker container.
 
-# More Details About bytEM Installation (Optional)
+## More Details About bytEM Installation (Optional)
 
 This section provides a deeper look at how bytEM is packaged and orchestrated behind the scenes.  
 You do not need to understand or modify these details for a standard installation, but they may be useful for advanced users or troubleshooting.
 
 ---
 
-## Docker Images Used
+### Docker Images Used
 
 bytEM uses several Docker images for its services:
 
@@ -165,7 +167,7 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 - Dockerfile.bot builds the bot image.
 - Dockerfile.bytemApp builds the React front-end (served by Nginx, includes certbot for SSL automation).
 
-## Container orchestration -
+### Container orchestration -
 
 - All services are managed using Docker Compose (docker-compose.yaml).
 - This file defines the containers and how they interact.
@@ -246,12 +248,12 @@ Apart from above named volumes, We have some directories mounted from host machi
 - **.env.bytem -** This is env variables file used to determine the config options needed for the bytEM to function. This file is generated in the root of the project when we run the first bash script (env_setup.sh). This file is mounted inside the containers bytem-be and bytem-bot.
 
 
-# Matrix User & Server Management Guide
+## Matrix User & Server Management Guide
 
 This section helps you test your Matrix installation and manage users on your bytEM server.
 
 
-## Creating a New Matrix User
+### 7. Create Your First bytEM User (Matrix User)
 
 To create a new user on your Matrix server, use the following command inside your server (replace `username` and `new_password` as needed):
 
@@ -287,7 +289,6 @@ Note that since running Synapse in Docker (not directly on the host), we need to
 ### Reset password
 
 ```bash
-
 # Reset a user password (as admin)
 curl -s -X POST \
   -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN" \
@@ -314,4 +315,14 @@ curl -s -X POST \
   --data-binary '{"msgtype": "m.text", "body": "Test message"}' \
   'https://matrix.bytem3.liberbyte.app/_matrix/client/r0/rooms/ROOM_ID/send/m.room.message'
 ```
+## bytEM GUI
+
+### 8. **Test your installation (Nginx, bytEM login page, user login)**
+To check nginx is running succesfully, navigate to your bytem instance url: exampke matrix.bytem.xyz.xyz.app or https://matrix.bytem1.liberbyte.app/
+
+![alt text](documentation_screenshots/image_11.png)
+
+Test login page by navigating to the example url
+
+![alt text](documentation_screenshots/image_12.png)
 
