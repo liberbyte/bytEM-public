@@ -11,18 +11,47 @@ bytEM public repo - bytEM from Liberbyte GmbH
 
 
 
-## Automation -
+## Quick Start
 
+1. **Install Docker & Docker Compose**
+2. **Clone this repository**
+3. **Run environment setup:** `sudo ./env_setup.sh`
+4. **Run installer:** `sudo ./install.sh`
+5. **Run SSL setup:** `sudo ./certbot.sh`
+
+---
+
+## Prerequisites
+
+- Ubuntu 24.04 server
+- Domain/subdomain for your installation
+- Custom credentials for bot user, MongoDB, RabbitMQ, Synapse, etc.
+
+---
+
+## Step-by-Step Installation
 - We have written 3 bash scripts (env_setup.sh, install.sh and certbot.sh) to automate the process of setting up and installing the application bytEM.
 - The main goal for these scripts is to generate the config files from the template files, run the containers and required first run commands, and generate ssl certificates.
 - All these scripts perform a certain set of tasks. Details of the tasks performed are as below -
 
+<!-- ### ssh into the VM server -->
 
-### install docker and docker-compose
 
-- sudo apt update
-- sudo apt install docker
-- sudo apt install docker-compose
+
+### install docker and docker-compose and clone the butem-public repository from github
+```sh
+sudo apt update
+sudo apt install docker docker-compose
+
+
+git clone https://github.com/liberbyte/bytEM-public.git
+cd bytEM-public
+
+```
+
+<!-- ![alt text](documentation_screenshots/image_5.png) -->
+
+
 
 ### 1. env_setup.sh -
 
@@ -43,15 +72,16 @@ run this script first by sudo ./env_setup.sh
 
 when prompted enter the following:
 
-subdomain: liberbyte.app
-
-prefix: bm4
-
-custome credentials for bot user, mongodb, rabbitmq, synapse, etc ...
+Enter your subdomain (e.g., liberbyte.app)
+Enter your prefix (e.g., bm4)
+Custome credentials for bot user, mongodb, rabbitmq, synapse, etc ...
 
 
 
-![alt text](documentation_screenshots/image_1.png)
+<!-- ![alt text](documentation_screenshots/image_1.png) -->
+
+
+![alt text](documentation_screenshots/image_6.png)
 
 
 ### 2. login to docker hub
@@ -60,7 +90,10 @@ custome credentials for bot user, mongodb, rabbitmq, synapse, etc ...
 ![alt text](documentation_screenshots/image_2.png)
 
 
-### 3. install.sh -
+### 3. Run installer: install.sh -
+
+
+sudo [install.sh](http://_vscodecontentref_/1)
 
 This script is the second step to run when setting up the bytEM application. The main goal of this script is to run all the containers in the bytEM stack in docker-compose.yaml, and register first admin user for matrix synapse. The details of the tasks performed by this script are as below -
 
@@ -70,19 +103,25 @@ This script is the second step to run when setting up the bytEM application. The
 - Restart the container bytem-be and bytem-bot for the changes to take effect
 
 
-pull all images and runs containers
+This pulls images and starts containers
 
 
-![alt text](documentation_screenshots/image_3.png)
+<!-- ![alt text](documentation_screenshots/image_3.png) -->
 
+![alt text](documentation_screenshots/image_7.png)
 
 ### 4. check the docker containers
 
+
+sudo docker ps
+
 we see all docker containers are up and running successfully
 
-![alt text](documentation_screenshots/image_4.png)
+<!-- ![alt text](documentation_screenshots/image_4.png) -->
 
-### 5. certbot.sh -
+![alt text](documentation_screenshots/image_8.png)
+
+### 5. Run SSL Setup: certbot.sh -
 
 This script is the third and final step to run when setting up the bytEM application. The goal of this script is to perform 3 tasks -
 
@@ -105,8 +144,8 @@ The details of the tasks performed by this script are as below -
 - Overrides Matrix Synapse rate limits for smoother operation.
 - Restarts necessary containers to apply the changes.
 
-
-
+![alt text](documentation_screenshots/image_9.png)
+<!-- 
 # Overview -
 
 This documentation goes over the approach taken to make bytEM easily deployable and upgradable using containerization and automation methodologies.
@@ -123,7 +162,7 @@ The approach taken to achieve the desired objectives includes the use of various
 
 - We have opted for Docker to package the application.
 - For container orchestration, we have used docker compose.
-- For automation, we have used bash scripts.
+- For automation, we have used bash scripts. -->
 
 
 # Install from Docker Images:
@@ -139,7 +178,6 @@ REPOSITORY             TAG                   IMAGE ID       CREATED             
 bytem-app              latest                208ed7919084   23 minutes ago      292MB
 bytem-be               latest                9472fd408ec4   25 minutes ago      2.1GB
 bytem-bot              latest                37d0118c4688   About an hour ago   378MB
-mongo                  latest                c0eb0ef91367   3 days ago          910MB
 postgres               14-alpine             fb250e5b8f7b   2 weeks ago         278MB
 matrixdotorg/synapse   v1.123.0              0a805e026713   7 months ago        418MB
 rabbitmq               3-management-alpine   699b570c4b87   12 months ago       176MB
@@ -189,12 +227,6 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 <td>bytem-bot</td>
 <td>Bot(s)</td>
 <td>4000:4000</td>
-</tr>
-<tr>
-<td>4.</td>
-<td>bytem-mongo</td>
-<td>MongoDB database (legacy and to be removed later from the stack and docker)</td>
-<td>27017:27017</td>
 </tr>
 <tr>
 <td>5.</td>
