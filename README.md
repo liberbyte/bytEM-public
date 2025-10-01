@@ -19,8 +19,9 @@ bytEM public repo - bytEM from Liberbyte GmbH
 
 ## Prerequisites
 
+- Virtual Machine: recommended minimum spec, example: 2 Cores, 8GB RAM, 80 GB disk space
 - Ubuntu 24.04 server
-- Domain/subdomain for your installation
+- Domain/subdomain for your installation (bytEM requires its own IP address / domain)
 - Customize credentials for bot user, RabbitMQ, Synapse, etc.
 
 ---
