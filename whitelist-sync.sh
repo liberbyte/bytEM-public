@@ -4,9 +4,9 @@ set -euo pipefail
 # Registry endpoint
 REGISTRY_URL="https://bytem.app/markets/byteM-market-list"
 # Local homeserver.yaml path
-HOMESERVER_PATH="/root/test.bk/generated_config_files/synapse_config/homeserver.yaml"
+HOMESERVER_PATH="/root/bytEM-public/generated_config_files/synapse_config/homeserver.yaml"
 # Nginx config path
-NGINX_CONFIG_PATH="/root/test.bk/generated_config_files/nginx_config/bytem.bm3.liberbyte.app.conf"
+NGINX_CONFIG_PATH="/root/bytEM-public/generated_config_files/nginx_config/bytem.bm3.liberbyte.app.conf"
 
 # --- Fetch domains ---
 DOMAINS=$(curl -fsS "$REGISTRY_URL" | jq -r '.[]')
