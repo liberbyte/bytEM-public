@@ -145,6 +145,25 @@ The details of the tasks performed by this script are as below -
 - Restarts necessary containers to apply the changes.
 
 ![alt text](documentation_screenshots/image_9.png)
+
+
+### 6. Run Whitelist Sync
+
+To keep your federation whitelist and `/solr` endpoint secure, run the whitelist sync script:
+
+```sh
+sudo [whitelist-sync.sh](http://_vscodecontentref_/0)
+```
+
+![alt text](documentation_screenshots/image_10.png)
+
+This script will:
+
+Fetch the latest list of allowed domains from the bytEM registry.
+Update your homeserver.yaml with the correct federation whitelist.
+Restrict access to the /solr endpoint in Nginx so only bytEM servers can connect.
+Reload the Nginx configuration inside the Docker container.
+
 <!-- 
 # Overview -
 
@@ -273,20 +292,16 @@ Apart from above named volumes, We have some directories mounted from host machi
 - **.env.bytem -** This is env variables file used to determine the config options needed for the bytEM to function. This file is generated in the root of the project when we run the first bash script (env_setup.sh) to generate .env.bytem file and synapse and nginx config files. This file is mounted inside the containers bytem-be and bytem-bot.
 
 
-# Creating a New Matrix User on bytem3 Server (reference is pdf documentation)
+# Matrix User & Server Management Guide
 
-here's the command to register a new Matrix user on bytem3 server:
+## Creating a New Matrix User
 
-```bash
+To create a new user on your Matrix server, use the following command inside your server (replace `username` and `new_password` as needed):
+
+**Interactive method:**
+```sh
 sudo docker exec -it bytem-synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
 ```
-
-Note that since running Synapse in Docker (not directly on the host), we need to use `docker exec` to run the command inside the container.
-
-```bash
- **docker exec -it**
-```
-
 When you run this command:
 1. You'll be prompted for a username (localpart)
 2. Then a password
@@ -303,8 +318,16 @@ sudo docker exec -it bytem-synapse register_new_matrix_user \
   --admin \
   http://localhost:8008
 ```
+Replace username and new_password with your desired values.
 
-## Matrix Server Management Quick Reference: key commands for managing your Matrix server:
+Note that since running Synapse in Docker (not directly on the host), we need to use `docker exec` to run the command inside the container.
+
+```bash
+ **docker exec -it**
+```
+
+
+## Matrix Server Management Quick Reference: key commands for managing Matrix server:
 
 ### 1. User Management
 
