@@ -1,12 +1,40 @@
 #!/bin/bash
 set -euo pipefail
 
+# Get script directory and set relative paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Validate we're in the correct directory (should contain docker-compose file)
+if [[ ! -f "$SCRIPT_DIR/docker-compose-client.yaml" ]]; then
+    echo "❌ Error: Script must be run from bytEM installation directory"
+    echo "Current directory: $SCRIPT_DIR"
+    echo "Please run from the directory containing docker-compose-client.yaml"
+    exit 1
+fi
+
 # Registry endpoint
 REGISTRY_URL="https://bytem.app/markets/byteM-market-list"
 # Local homeserver.yaml path
-HOMESERVER_PATH="/root/bytEM-public/generated_config_files/synapse_config/homeserver.yaml"
-# Nginx config path
-NGINX_CONFIG_PATH="/root/bytEM-public/generated_config_files/nginx_config/bytem.bm3.liberbyte.app.conf"
+HOMESERVER_PATH="$SCRIPT_DIR/generated_config_files/synapse_config/homeserver.yaml"
+# Nginx config path - dynamically find the config file
+NGINX_CONFIG_DIR="$SCRIPT_DIR/generated_config_files/nginx_config"
+NGINX_CONFIG_PATH=$(find "$NGINX_CONFIG_DIR" -name "bytem.*.conf" | head -1)
+
+# Verify required files exist
+if [[ ! -f "$HOMESERVER_PATH" ]]; then
+    echo "❌ Error: homeserver.yaml not found at $HOMESERVER_PATH"
+    exit 1
+fi
+
+if [[ -z "$NGINX_CONFIG_PATH" || ! -f "$NGINX_CONFIG_PATH" ]]; then
+    echo "❌ Error: nginx config not found in $NGINX_CONFIG_DIR"
+    echo "Looking for files matching pattern: bytem.*.conf"
+    ls -la "$NGINX_CONFIG_DIR" 2>/dev/null || echo "Directory not found"
+    exit 1
+fi
+
+echo "✅ Configuration files found"
+echo "✅ Using nginx config: $NGINX_CONFIG_PATH"
 
 # --- Fetch domains ---
 DOMAINS=$(curl -fsS "$REGISTRY_URL" | jq -r '.[]')
