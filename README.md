@@ -253,79 +253,79 @@ Apart from above named volumes, We have some directories mounted from host machi
 This section helps you test your Matrix installation and manage users on your bytEM server.
 
 
-### 7. Create Your First bytEM User (Matrix User)
+## 7. Create Your First bytEM User (Required)
 
-To create a new user on your Matrix server, use the following command inside your server (replace `username` and `new_password` as needed):
+Creating a bytEM user (Matrix user) is required to start using bytEM and to test your installation.
 
 **Interactive method:**
 ```sh
 sudo docker exec -it bytem-synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
 ```
-When you run this command:
-1. You'll be prompted for a username (localpart)
-2. Then a password
-3. Then whether to make this user an admin
+- You will be prompted for:
+  1. Username (e.g. `test`)
+  2. Password (e.g. `test`)
+  3. Whether to make the user an admin (`yes` recommended for first user)
 
-
-Or directly using the following command (non-interactive):
-
-```bash
+**Non-interactive method (example):**
+```sh
 sudo docker exec -it bytem-synapse register_new_matrix_user \
   -c /data/homeserver.yaml \
-  --user username \
-  --password "new_password" \
+  --user test \
+  --password "test" \
   --admin \
   http://localhost:8008
 ```
-Replace username and new_password with your desired values.
+- This creates an admin user `@test:your-domain` with password `test`.
 
-Note that since running Synapse in Docker (not directly on the host), we need to use `docker exec` to run the command inside the container.
+---
 
-```bash
- **docker exec -it**
-```
+## 8. Test Your Installation (Required)
 
+After installation, perform these checks to confirm everything is working:
 
-### Reset password
+### 1. **Nginx Test**
+- Open your bytEM domain in a browser (e.g. `https://matrix.bytem.your-domain.app`)
+- You should see the bytEM login page.
+- If the page does not load, Nginx or SSL setup may have failed.
 
-```bash
-# Reset a user password (as admin)
-curl -s -X POST \
-  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data-binary '{"new_password": "NewPassword123"}' \
-  'http://localhost:8008/_synapse/admin/v1/reset_password/USERNAME'
-```
+![Nginx Test](documentation_screenshots/image_11.png)
 
+### 2. **bytEM Login Page Test**
+- Go to the bytEM login page (e.g. `https:/bytem.your-domain.app/user/login`)
+- Enter the user credentials you created above.
+- You should be able to log in successfully.
 
-### Room Management (as admin)
+![bytEM Login Test](documentation_screenshots/image_12.png)
 
-```bash
-# Create a new room
-curl -s -X POST \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data-binary '{"name": "Room Name", "room_version": "6"}' \
-  'https://matrix.bytem3.liberbyte.app/_matrix/client/r0/createRoom'
+### 3. **User Login Test**
+- Use the credentials for your bytEM user (Matrix user) to log in.
 
-# Send a message to a room
-curl -s -X POST \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data-binary '{"msgtype": "m.text", "body": "Test message"}' \
-  'https://matrix.bytem3.liberbyte.app/_matrix/client/r0/rooms/ROOM_ID/send/m.room.message'
-```
-## bytEM GUI
+![bytEM Login Test](documentation_screenshots/image_13.png)
 
-### 8. **Test your installation (Nginx, bytEM login page, user login)**
-To check nginx is running succesfully, navigate to your bytem instance url: exampke matrix.bytem.xyz.xyz.app or https://matrix.bytem1.liberbyte.app/
+- If login fails, check the Matrix Synapse container logs:
+  ```sh
+  sudo docker logs bytem-synapse --tail 50
+  ```
 
-![alt text](documentation_screenshots/image_11.png)
+---
 
-Test login page by navigating to the example url
+## 9. Troubleshooting
 
-![alt text](documentation_screenshots/image_12.png)
+- If Nginx or bytEM login page does not load, check container status:
+  ```sh
+  sudo docker ps
+  ```
+- If login fails, check Synapse logs and user creation steps.
+- Ensure your domain is whitelisted and SSL certificates are valid.
 
-Test login by username and password you created
+---
 
-![alt text](documentation_screenshots/image_13.png)
+> **Note:**  
+> Replace all placeholder values in commands:
+> - `your-domain`: Your actual domain/subdomain
+> - `USERNAME`: The Matrix/bytEM username (e.g. `test`)
+> - `PASSWORD`: The password you set for the user
+
+---
+
+**With these steps, you can verify your bytEM installation and ensure user login is working.**
