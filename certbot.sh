@@ -32,7 +32,7 @@ SYNAPSE_CONTAINER_NAME="bytem-synapse"
 ADMIN_USERNAME=${PANTALAIMON_USERNAME}
 ADMIN_PASSWORD=${PANTALAIMON_USERNAME}
 MATRIX_URL="http://bytem-synapse:8008"
-RESTART_CONTAINER="bytem-be bytem-bot"
+RESTART_CONTAINER="bytem-be bytem-bot bytem-app"
 
 # Prompt or fetch environment variables
 header_message "Enter the information needed to generate SSL certificate"
@@ -60,9 +60,15 @@ fi
 
 header_message "Generating SSL Certificates.."
 
+# Fix nginx configuration for ACME challenge
+echo -e "${YELLOW}Preparing nginx configuration for SSL...${NC}"
+sudo docker exec bytem-app sh -c 'sed -i "/location \/.well-known\/acme-challenge\//,+3d" /etc/nginx/conf.d/bytem.bm3.liberbyte.app.conf'
+sudo docker exec bytem-app sh -c 'sed -i "/location \/ {/i\\        location /.well-known/acme-challenge/ {\n              root /usr/share/nginx/html;\n              try_files \$uri =404;\n        }\n" /etc/nginx/conf.d/bytem.bm3.liberbyte.app.conf'
+sudo docker exec bytem-app nginx -s reload
+
 # Generate SSL Certificates
 echo -e "${YELLOW}Attempting to generate SSL certificates...${NC}"
-if sudo docker exec bytem-app certbot --nginx --agree-tos -n -m "$EMAIL" -d "$BYTEM_DOMAIN,$MATRIX_DOMAIN"; then
+if certbot certonly --standalone --agree-tos -n -m "$EMAIL" -d "$BYTEM_DOMAIN" -d "$MATRIX_DOMAIN" --http-01-port=8080; then
     echo "SSL certificates generated successfully."
 
     # Uncomment lines starting with `#` and containing `listen` in matrix.bytem nginx config file
@@ -126,6 +132,16 @@ RESPONSE=$(sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -X POST "http://byt
     -d '{"messages_per_second": 0, "burst_count": 0}')
 
 echo "Curl Response: $RESPONSE"
+
+header_message "Fixing frontend configuration for HTTPS"
+
+# Fix hardcoded localhost URLs in frontend
+docker exec bytem-app sed -i 's|http://localhost:3000|https://'${BYTEM_DOMAIN}'|g' /usr/share/nginx/html/umi.js 2>/dev/null || true
+
+# Fix Matrix domain in frontend if it exists
+docker exec bytem-app sed -i 's|matrix\.bytem0\.liberbyte\.app|'${MATRIX_DOMAIN}'|g' /usr/share/nginx/html/umi.js 2>/dev/null || true
+
+success_message "Frontend configuration updated for HTTPS"
 
 header_message "Restarting ${RESTART_CONTAINER} Container.."
 

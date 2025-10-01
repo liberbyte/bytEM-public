@@ -27,7 +27,7 @@ SYNAPSE_CONTAINER_NAME="bytem-synapse"
 ADMIN_USERNAME=${PANTALAIMON_USERNAME}
 ADMIN_PASSWORD=${PANTALAIMON_USERNAME}
 MATRIX_URL="http://bytem-synapse:8008"
-RESTART_CONTAINER="bytem-be bytem-bot"
+RESTART_CONTAINER="bytem-be bytem-bot bytem-app"
 
 # Helper function for logging
 log() {
