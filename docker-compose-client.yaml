@@ -38,6 +38,8 @@ services:
     volumes:
       # - ./solr/data:/app/solr/data
       - ./.env.bytem:/app/.env.bytem
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/conf:/etc/letsencrypt
     networks:
       - bytem-network
 

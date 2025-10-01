@@ -247,6 +247,32 @@ for template in "${NGINX_TEMPLATES[@]}"; do
   fi
 done
 
+header_message "Setting up SSL configuration"
+
+# Create SSL directories
+mkdir -p "certbot/conf/live/${BYTEM_DOMAIN}"
+mkdir -p "certbot/www"
+
+# Create empty SSL files if SSL is disabled
+if [ "${SSL_ENABLED:-false}" = "false" ]; then
+  # Create empty certificate files with proper content
+  echo "-----BEGIN PRIVATE KEY-----" > "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
+  echo "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB" >> "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
+  echo "-----END PRIVATE KEY-----" >> "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
+  
+  echo "-----BEGIN CERTIFICATE-----" > "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
+  echo "MIIDXTCCAkWgAwIBAgIJAJC1HiIAZAiIMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV" >> "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
+  echo "-----END CERTIFICATE-----" >> "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
+  
+  echo -e "${GREEN}Created dummy SSL certificate files for development${NC}"
+fi
+
+header_message "Setting up Solr directories"
+
+# Create Solr directories
+mkdir -p "solr/data"
+mkdir -p "solr/logs"
+
 header_message "----- ALL SET..! -----"
 
 echo -e "${RED}IMPORTANT: ${BRIGHT_GREEN}PLEASE BACKUP THE FILE $ENV_OUTPUT_FILE TO ENSURE NOT TO LOSE THE SET CREDENTIALS!!!${NC}"
