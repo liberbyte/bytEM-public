@@ -61,12 +61,12 @@ sed -i '/^  - matrix\./d' "$HOMESERVER_PATH"
 sed -i '/^enable_federation: true$/a\
 federation_domain_whitelist:' "$HOMESERVER_PATH"
 
-# --- Add each peer ---
-for peer in $PEERS; do
-  sed -i "/^federation_domain_whitelist:$/a\\  - matrix.$peer" "$HOMESERVER_PATH"
+# --- Add each domain from market list ---
+for domain in $DOMAINS; do
+  sed -i "/^federation_domain_whitelist:$/a\\  - matrix.$domain" "$HOMESERVER_PATH"
 done
 
-echo "✅ Whitelist cleaned and updated with bm3 and bm4 domains only"
+echo "✅ Whitelist updated with all market domains"
 
 # --- Get server IP ---
 SERVER_IP=$(curl -4 -s ifconfig.me)
