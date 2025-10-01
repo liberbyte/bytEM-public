@@ -40,9 +40,15 @@ echo "✅ Using nginx config: $NGINX_CONFIG_PATH"
 DOMAINS=$(curl -fsS "$REGISTRY_URL" | jq -r '.[]')
 echo "✅ Registry domains fetched successfully"
 
-# --- Use all domains from registry ---
-PEERS=$(echo "$DOMAINS" | tr '\n' ' ')
-echo "✅ Peers for whitelist: $PEERS"
+# --- Filter domains to match current server's domain ---
+# Extract parent domain (liberbyte.app)
+CURRENT_DOMAIN="liberbyte.app"
+
+# Filter domains to only include same parent domain
+FILTERED_DOMAINS=$(echo "$DOMAINS" | grep "\.${CURRENT_DOMAIN}$")
+PEERS=$(echo "$FILTERED_DOMAINS" | tr '\n' ' ')
+echo "✅ Current domain: $CURRENT_DOMAIN"
+echo "✅ Filtered peers for whitelist: $PEERS"
 
 # --- Backup original file ---
 cp "$HOMESERVER_PATH" "$HOMESERVER_PATH.bak"
@@ -62,12 +68,9 @@ done
 
 echo "✅ Whitelist cleaned and updated with bm3 and bm4 domains only"
 
-# --- Get server IPs ---
-BM3_IP=$(curl -4 -s ifconfig.me)
-BM4_IP=$(dig +short bytem.bm4.liberbyte.app A | head -1)
-
-echo "✅ BM3 server IP: $BM3_IP"
-echo "✅ BM4 server IP: $BM4_IP"
+# --- Get server IP ---
+SERVER_IP=$(curl -4 -s ifconfig.me)
+echo "✅ Current server IP: $SERVER_IP"
 
 # --- Update nginx config with IP restrictions ---
 cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
@@ -75,10 +78,22 @@ cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
 # Remove existing allow/deny directives in /solr location
 sed -i '/location \/solr\/  {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
 
-# Add IP restrictions after the location /solr/ { line
+# Add current server IP first
 sed -i "/location \/solr\/  {/a\\
-                allow $BM3_IP;\\
-                allow $BM4_IP;\\
+                allow $SERVER_IP;" "$NGINX_CONFIG_PATH"
+
+# Add IPs for all domains from the whitelist
+for peer in $PEERS; do
+    PEER_IP=$(dig +short matrix.$peer A | head -1)
+    if [[ -n "$PEER_IP" && "$PEER_IP" != "$SERVER_IP" ]]; then
+        sed -i "/location \/solr\/  {/a\\
+                allow $PEER_IP;" "$NGINX_CONFIG_PATH"
+        echo "✅ Added peer IP: $PEER_IP (matrix.$peer)"
+    fi
+done
+
+# Add deny all at the end
+sed -i "/location \/solr\/  {/a\\
                 deny all;" "$NGINX_CONFIG_PATH"
 
 echo "✅ Nginx config updated with IP restrictions for /solr"
@@ -88,5 +103,5 @@ docker exec bytem-app nginx -s reload
 echo "✅ Nginx reloaded in bytem-app container"
 
 # --- Reload synapse container ---
-docker exec synapse kill -HUP 1
+docker kill -s HUP bytem-synapse
 echo "✅ Synapse configuration reloaded"
