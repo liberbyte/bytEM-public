@@ -86,3 +86,7 @@ echo "✅ Nginx config updated with IP restrictions for /solr"
 # --- Reload bytem-app container ---
 docker exec bytem-app nginx -s reload
 echo "✅ Nginx reloaded in bytem-app container"
+
+# --- Reload synapse container ---
+docker exec synapse kill -HUP 1
+echo "✅ Synapse configuration reloaded"
