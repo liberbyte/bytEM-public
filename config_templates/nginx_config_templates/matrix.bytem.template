@@ -2,12 +2,12 @@ server {
 
         listen       80;
         listen  [::]:80;
-        server_name ${MATRIX_DOMAIN};
+        server_name ${MATRIX_APP};
 
         location /.well-known/matrix/server {
                 default_type application/json;
                 add_header Access-Control-Allow-Origin *;
-                return 200 '{"m.server": "${MATRIX_DOMAIN}:443"}';
+                return 200 '{"m.server": "${MATRIX_APP}:443"}';
         }
 
         location /_matrix {
