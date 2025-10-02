@@ -98,9 +98,9 @@ rc_invites:
       burst_count: 2000
 
 rc_login:
-  per_second: 0.17  # Limits to 1 login per 6 seconds
-  burst_count: 5    # Allows up to 5 login attempts in a burst
+  per_second: 10000
+  burst_count: 10000
 
 rc_registration:
-  per_second: 0.33  # Limits to 1 registration every 3 seconds
-  burst_count: 5    # Allows up to 5 registrations in a burst
+  per_second: 10000
+  burst_count: 10000
