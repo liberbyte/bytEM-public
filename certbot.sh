@@ -82,6 +82,12 @@ if certbot certonly --webroot -w ./certbot/www --agree-tos -n -m "$EMAIL" -d "$B
         sudo cp "/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001/privkey.pem" "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
     fi
 
+    # Enable SSL configuration in nginx
+    NGINX_BYTEM_CONF_LOCAL="$CONFIG_DIR/nginx_config/bytem.${BYTEM_DOMAIN}.conf"
+    sed -i '/^#server {/,/^#}/s/^#//' "$NGINX_BYTEM_CONF_LOCAL"
+    sed -i 's/^#    listen 443/    listen 443/' "$NGINX_BYTEM_CONF_LOCAL"
+    sed -i 's/^#    ssl_certificate/    ssl_certificate/' "$NGINX_BYTEM_CONF_LOCAL"
+
     # Wait for nginx to start
     sleep 5
     
