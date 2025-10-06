@@ -5,6 +5,24 @@
 bytEM public repo - bytEM from Liberbyte GmbH 
 
 
+
+## About bytEM
+
+bytEM is a secure, decentralized data management framework, sometimes describe  as “dmail i.e. email for data” easily enabling sharing, exchanging and also monetizing the data, Developed by [Liberbyte GmbH](https://liberbyte.com).
+
+- [bytEM Product Overview](https://liberbyte.com/bytEM.html)
+- [Contact Us](https://liberbyte.com/contact)
+
+Learn more about our secure communication solutions for organizations and businesses.
+
+## Quick Access
+
+Scan this QR code to access the bytEM repository:
+
+![bytEM Repository QR Code](documentation_screenshots/bytem_repo_qr.png)
+
+Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM-public)
+
 ## Quick Start
 
 1. **Install Docker & Docker Compose**
@@ -330,3 +348,25 @@ After installation, perform these checks to confirm everything is working:
 ---
 
 **With these steps, you can verify your bytEM installation and ensure user login is working.**
+
+---
+
+## Support & Community
+
+### Matrix Support Room
+
+Join our public Matrix support room to get help with your bytEM installation:
+
+- Room Address: `#bytem-support:matrix.liberbyte.com`
+- Direct Link: [#bytem-support:matrix.liberbyte.com](https://matrix.to/#/#bytem-install-admin:matrix.liberbyte.com)
+
+
+
+You can access this room with any Matrix client like Element:
+1. Open Element: [app.element.io](https://app.element.io)
+2. Click "Explore"
+3. Enter `#bytem-support:matrix.liberbyte.com`
+4. Join the room
+
+
+Our support team is available to help with installation issues, configuration questions, and best practices.
