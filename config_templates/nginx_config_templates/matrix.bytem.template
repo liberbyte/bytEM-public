@@ -1,30 +1,61 @@
 server {
+    listen       80;
+    listen  [::]:80;
+    server_name ${MATRIX_DOMAIN};
 
-        listen       80;
-        listen  [::]:80;
-        server_name ${MATRIX_APP};
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
 
-        location /.well-known/matrix/server {
-                default_type application/json;
-                add_header Access-Control-Allow-Origin *;
-                return 200 '{"m.server": "${MATRIX_APP}:443"}';
-        }
+    location /.well-known/matrix/server {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"m.server": "${MATRIX_DOMAIN}:443"}';
+    }
 
-        location /_matrix {
-                proxy_pass http://bytem-synapse:8008;
-                proxy_set_header X-Forwarded-For $remote_addr;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_set_header Host $host;
-                client_max_body_size 2G;
-        }
+    # Redirect HTTP to HTTPS
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
 
-        location /_synapse {
-                proxy_pass http://bytem-synapse:8008;
-                proxy_set_header X-Forwarded-For $remote_addr;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_set_header Host $host;
-                client_max_body_size 2G;
-        }
-#    listen 8448 ssl http2 default_server;
-#    listen [::]:8448 ssl http2 default_server;
+# SSL Configuration
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${MATRIX_DOMAIN};
+
+    ssl_certificate ${CERT_PATH}/fullchain.pem;
+    ssl_certificate_key ${CERT_PATH}/privkey.pem;
+
+    # SSL Security Settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    location /.well-known/matrix/server {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"m.server": "${MATRIX_DOMAIN}:443"}';
+    }
+
+    location /_matrix {
+        proxy_pass http://bytem-synapse:8008;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        client_max_body_size 2G;
+    }
+
+    location /_synapse {
+        proxy_pass http://bytem-synapse:8008;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        client_max_body_size 2G;
+    }
 }

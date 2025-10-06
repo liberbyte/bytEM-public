@@ -1,151 +1,82 @@
 #!/bin/bash
-set -euo pipefail
 
-# ================= Colors =================
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BRIGHT_GREEN='\033[1;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-header_message() {
-  echo -e "${CYAN}==========================================${NC}"
-  echo -e "${CYAN}$1${NC}"
-  echo -e "${CYAN}==========================================${NC}"
-}
-
-# ================= Load environment =================
-set +u
+# Load environment
 source .env.bytem
-set -u
 
 BYTEM_DOMAIN=${EXCHANGE_SERVER_HOSTNAME}
-MATRIX_DOMAIN=${MATRIX_APP}
-DOMAIN_NAME=${DOMAIN_NAME}
-CONFIG_DIR="generated_config_files/"
-SYNAPSE_CONTAINER_NAME="bytem-synapse"
-ADMIN_USERNAME=${PANTALAIMON_USERNAME}
-ADMIN_PASSWORD=${PANTALAIMON_USERNAME}
-MATRIX_URL="http://bytem-synapse:8008"
-RESTART_CONTAINER="bytem-be bytem-bot bytem-app"
+MATRIX_DOMAIN=${MATRIX_SERVER_NAME}
+EMAIL="admin@liberbyte.app"
 
-# ================= Prompt email =================
-header_message "Enter the information needed to generate SSL certificate"
-EMAIL=${EMAIL:-$(read -p "Enter your email for Certificate Notifications: " REPLY && echo "$REPLY")}
+echo -e "${CYAN}BytEM SSL Setup${NC}"
+echo -e "${CYAN}BYTEM: ${BYTEM_DOMAIN}${NC}"
+echo -e "${CYAN}Matrix: ${MATRIX_DOMAIN}${NC}"
 
-# ================= Validate domain =================
-if [[ "$DOMAIN_NAME" =~ ^www\..* ]]; then
-  echo -e "${RED}ERROR: Domain should not start with 'www.'${NC}"
-  exit 1
-elif [[ ! "$DOMAIN_NAME" =~ ^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$ ]]; then
-  echo -e "${RED}ERROR: Invalid domain name format${NC}"
-  exit 1
-fi
+# Create directories
+mkdir -p "./certbot/conf/live/${BYTEM_DOMAIN}"
+mkdir -p "./certbot/www/.well-known/acme-challenge"
 
-# ================= Nginx config check =================
-NGINX_BYTEM_CONF="/etc/nginx/conf.d/bytem.${BYTEM_DOMAIN}.conf"
-NGINX_MATRIX_CONF="$CONFIG_DIR/nginx_config/matrix.${BYTEM_DOMAIN}.conf"
-
-if [ ! -f "$NGINX_MATRIX_CONF" ]; then
-  echo -e "${RED}ERROR: Matrix nginx config not found: $NGINX_MATRIX_CONF${NC}"
-  exit 1
-fi
-
-# ================= Fix Nginx for ACME =================
-header_message "Preparing nginx configuration for SSL..."
-
-# Create temporary certificates if they don't exist
-if [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
-    echo -e "${YELLOW}Creating temporary certificates for nginx...${NC}"
-    sudo mkdir -p "./certbot/conf/live/${BYTEM_DOMAIN}"
-    sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+# Check if local development
+if [[ "$BYTEM_DOMAIN" == *"localhost"* ]] || [[ "$BYTEM_DOMAIN" == *".local"* ]]; then
+    echo -e "${YELLOW}Local development - self-signed certificates${NC}"
+    
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" \
         -out "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" \
-        -subj "/C=US/ST=State/L=City/O=Organization/CN=${BYTEM_DOMAIN}" > /dev/null 2>&1
-fi
-
-# Reload nginx to ensure config is loaded
-sudo docker exec bytem-app nginx -s reload
-
-# ================= Generate SSL =================
-header_message "Generating SSL Certificates..."
-if certbot certonly --webroot -w ./certbot/www --agree-tos -n -m "$EMAIL" -d "$BYTEM_DOMAIN" -d "$MATRIX_DOMAIN"; then
-    echo -e "${GREEN}SSL certificates generated successfully${NC}"
+        -subj "/C=US/ST=State/L=City/O=BytEM/CN=${BYTEM_DOMAIN}" 2>/dev/null
     
-    # Copy certificates from system location to docker volume
-    if [ -d "/etc/letsencrypt/live/${BYTEM_DOMAIN}" ]; then
-        sudo cp "/etc/letsencrypt/live/${BYTEM_DOMAIN}/fullchain.pem" "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
-        sudo cp "/etc/letsencrypt/live/${BYTEM_DOMAIN}/privkey.pem" "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
-    elif [ -d "/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001" ]; then
-        sudo cp "/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001/fullchain.pem" "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
-        sudo cp "/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001/privkey.pem" "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
-    fi
-
-    # Enable SSL configuration in nginx
-    NGINX_BYTEM_CONF_LOCAL="$CONFIG_DIR/nginx_config/bytem.${BYTEM_DOMAIN}.conf"
-    sed -i '/^#server {/,/^#}/s/^#//' "$NGINX_BYTEM_CONF_LOCAL"
-    sed -i 's/^#    listen 443/    listen 443/' "$NGINX_BYTEM_CONF_LOCAL"
-    sed -i 's/^#    ssl_certificate/    ssl_certificate/' "$NGINX_BYTEM_CONF_LOCAL"
-
-    # Wait for nginx to start
-    sleep 5
-    
-    # Reload Nginx
-    sudo docker exec bytem-app nginx -s reload
+    CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
 else
-    echo -e "${RED}SSL certificate generation failed${NC}"
-    echo -e "${YELLOW}Generating self-signed certificates as fallback...${NC}"
+    echo -e "${YELLOW}Production - Let's Encrypt certificates${NC}"
     
-    # Create certificate directory
-    sudo mkdir -p "./certbot/conf/live/${BYTEM_DOMAIN}"
+    docker run --rm \
+        -v "${PWD}/certbot/conf:/etc/letsencrypt" \
+        -v "${PWD}/certbot/www:/var/www/certbot" \
+        certbot/certbot certonly \
+        --webroot \
+        --webroot-path=/var/www/certbot \
+        --email "$EMAIL" \
+        --agree-tos \
+        --no-eff-email \
+        --expand \
+        -d "$BYTEM_DOMAIN" \
+        -d "$MATRIX_DOMAIN" 2>/dev/null || echo "Certificate already exists or failed"
     
-    # Generate self-signed certificates
-    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" \
-        -out "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" \
-        -subj "/C=US/ST=State/L=City/O=Organization/CN=${BYTEM_DOMAIN}"
-    
-    echo -e "${YELLOW}Self-signed certificates created${NC}"
-    exit 1
+    # Dynamically find the correct certificate directory
+    if [ -d "./certbot/conf/live/${BYTEM_DOMAIN}-0001" ]; then
+        CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001"
+    elif [ -d "./certbot/conf/live/${BYTEM_DOMAIN}" ]; then
+        CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+    else
+        echo -e "${RED}No certificate directory found${NC}"
+        exit 1
+    fi
 fi
 
-# ================= Generate Token =================
-header_message "Generating Login Token..."
-RESPONSE=$(sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl --location 'http://bytem-be:3000/authorize' \
-    --header "matrix_server: ${MATRIX_URL}" \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "password": "'${ADMIN_PASSWORD}'",
-        "username": "'${ADMIN_USERNAME}'"
-    }')
+echo -e "${YELLOW}Using certificate path: ${CERT_PATH}${NC}"
 
-TOKEN=$(echo "$RESPONSE" | grep -o '"token":"[^"]*"' | sed 's/"token":"//;s/"//')
+# Generate nginx configs with dynamic certificate path
+sed -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
+    -e "s|\${CERT_PATH}|$CERT_PATH|g" \
+    config_templates/nginx_config_templates/bytem.template > \
+    generated_config_files/nginx_config/${BYTEM_DOMAIN}.conf
 
-if [[ -z "$TOKEN" ]]; then
-    echo -e "${RED}Error: Token could not be generated. Response: $RESPONSE${NC}"
-    exit 1
-fi
+sed -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
+    -e "s|\${CERT_PATH}|$CERT_PATH|g" \
+    config_templates/nginx_config_templates/matrix.bytem.template > \
+    generated_config_files/nginx_config/matrix.${MATRIX_DOMAIN}.conf
 
-echo "Replacing token in .env.bytem..."
-sed -i "s/\${TOKEN}/$TOKEN/g" .env.bytem
+# Clean up and reload
+docker exec bytem-app rm -f /etc/nginx/conf.d/matrix.bytem.bm1.liberbyte.app.conf 2>/dev/null
+docker exec bytem-app nginx -t && docker exec bytem-app nginx -s reload
 
-# ================= Override Rate Limit =================
-header_message "Overriding Rate Limit..."
-sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -X POST \
-    "http://bytem-synapse:8008/_synapse/admin/v1/users/@${ADMIN_USERNAME}:$MATRIX_DOMAIN/override_ratelimit" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"messages_per_second": 0, "burst_count": 0}'
-
-# ================= Fix frontend =================
-header_message "Fixing frontend configuration for HTTPS"
-docker exec bytem-app sed -i "s|http://localhost:3000|https://${BYTEM_DOMAIN}|g" /usr/share/nginx/html/umi.js 2>/dev/null || true
-docker exec bytem-app sed -i "s|matrix\.bytem0\.liberbyte\.app|${MATRIX_DOMAIN}|g" /usr/share/nginx/html/umi.js 2>/dev/null || true
-
-# ================= Restart containers =================
-header_message "Restarting containers..."
-sudo docker restart ${RESTART_CONTAINER}
-
-header_message "SSL & configuration setup completed successfully!"
-
+echo -e "${GREEN}✅ SSL Setup Complete${NC}"
+echo -e "${CYAN}Certificate Path: ${CERT_PATH}${NC}"
+echo -e "${CYAN}BYTEM: https://${BYTEM_DOMAIN}${NC}"
+echo -e "${CYAN}Matrix: https://${MATRIX_DOMAIN}${NC}"
