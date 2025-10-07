@@ -3,20 +3,10 @@ version: '3.6'
 services:
 
   bytem-app:
-<<<<<<< HEAD
     image: liberbyteadmin/bytem:app-done
     container_name: bytem-app
     hostname: bytem-app
     restart: "always"
-=======
-    image: liberbyteadmin/bytem:app-fixed
-    container_name: bytem-app
-    hostname: bytem-app
-    restart: "always"
-      #build:
-      #context: .
-      # dockerfile: ./Dockerfile.bytemApp
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     ports:
       - 80:80
       - 443:443
@@ -28,11 +18,7 @@ services:
       - bytem-network
 
   bytem-be:
-<<<<<<< HEAD
     image: liberbyteadmin/bytem:be-done
-=======
-    image: liberbyteadmin/bytem:be-fixed
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     container_name: bytem-be
     hostname: bytem-be
     restart: always
@@ -40,42 +26,22 @@ services:
       - bytem-synapse
     env_file:
       - .env.bytem
-<<<<<<< HEAD
-=======
-        #build:
-        #context: .
-        #dockerfile: ./Dockerfile.backend
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     ports:
       - 9999:9999
       - 3000:3000
     volumes:
-<<<<<<< HEAD
-=======
-      # - ./solr/data:/app/solr/data
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
       - ./.env.bytem:/app/.env.bytem
       - ./certbot/conf:/etc/letsencrypt
     networks:
       - bytem-network
 
   bytem-bot:
-<<<<<<< HEAD
     image: liberbyteadmin/bytem:bot-done
-=======
-    image: liberbyteadmin/bytem:bot-latest
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     container_name: bytem-bot
     hostname: bytem-bot
     restart: always
     depends_on:
       - bytem-synapse
-<<<<<<< HEAD
-=======
-        #build:
-        #context: .
-        #dockerfile: ./Dockerfile.bot
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     ports:
       - 4000:4000
     volumes:
@@ -91,13 +57,6 @@ services:
     restart: always
     env_file:
       - .env.bytem
-<<<<<<< HEAD
-=======
-    # environment: 
-    #   - RABBITMQ_DEFAULT_USER=bytem
-    #   - RABBITMQ_DEFAULT_PASS=bytem
-    #   - RABBITMQ_DEFAULT_VHOST=bytem
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     ports:
       - 5672:5672
       - 15672:15672
@@ -121,20 +80,11 @@ services:
       - ./solr:/var/solr
     command:
       - -force
-<<<<<<< HEAD
-=======
-      # - solr-precreate
-      # - gettingstarted
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     networks:
       - bytem-network
 
   bytem-synapse:
-<<<<<<< HEAD
     image: docker.io/matrixdotorg/synapse:v1.123.0
-=======
-    image: liberbyteadmin/bytem:synapse
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
     container_name: bytem-synapse
     hostname: bytem-synapse
     restart: always
@@ -150,7 +100,6 @@ services:
       - ./generated_config_files/synapse_config:/data
     networks:
       - bytem-network
-<<<<<<< HEAD
     command: >
       bash -c "
         apt-get update &&
@@ -159,8 +108,6 @@ services:
         chmod +x /usr/local/bin/yq &&
         exec /start.py
       "
-=======
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
   
   bytem-synapse-db:
     image: docker.io/postgres:14-alpine
@@ -170,11 +117,6 @@ services:
     env_file:
       - .env.bytem
     environment:
-<<<<<<< HEAD
-=======
-      # - POSTGRES_USER=synapse
-      # - POSTGRES_PASSWORD=bytemsynapse
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     ports:
       - 5432:5432
@@ -216,10 +158,5 @@ volumes:
     name: bytem-rabbitmq-data
   bytem-rabbitmq-log:
     name: bytem-rabbitmq-log
-<<<<<<< HEAD
-=======
-  # bytem-solr-data:
-  #   name: bytem-solr-data
->>>>>>> f0953e4ff9ca93bebed4b52d29b4edcebd4d797d
   bytem-synapse-db-data:
     name: bytem-synapse-db-data
