@@ -133,6 +133,11 @@ we see all docker containers are up and running successfully
 
 ### 5. Run SSL Setup: certbot.sh -
 
+
+```bash
+sudo ./certbot.sh
+```
+
 This script is the third step to run when setting up the bytEM application. The goal of this script is to perform 3 tasks -
 
 - Generate the SSL certificates and apply them to the nginx running in bytem-app container.
