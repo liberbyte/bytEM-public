@@ -226,8 +226,10 @@ for template in "${NGINX_TEMPLATES[@]}"; do
     # Generate appropriate filename based on template
     if [[ "$template" == *"matrix.bytem.template" ]]; then
       output_file="$GENERATED_DIR/nginx_config/matrix.${BYTEM_DOMAIN}.conf"
+      CERT_PATH="/etc/letsencrypt/live/$MATRIX_DOMAIN"
     else
       output_file="$GENERATED_DIR/nginx_config/${BYTEM_DOMAIN}.conf"
+      CERT_PATH="/etc/letsencrypt/live/$BYTEM_DOMAIN"
     fi
     sed \
       -e "s/\${DOMAIN}/$DOMAIN_NAME/g" \
@@ -239,6 +241,7 @@ for template in "${NGINX_TEMPLATES[@]}"; do
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
       -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
+      -e "s|\${CERT_PATH}|$CERT_PATH|g" \
       "$template" > "$output_file"
     echo -e "${GREEN}Generated file: $output_file${NC}"
   else

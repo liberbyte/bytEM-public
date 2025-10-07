@@ -45,7 +45,7 @@ log "Starting Docker containers..."
 MAX_RETRIES=3
 RETRY_DELAY=20
 for i in $(seq 1 $MAX_RETRIES); do
-    if sudo docker-compose -f docker-compose-client.yaml up -d --build; then
+    if sudo docker-compose up -d --build; then
         log "Docker containers started successfully."
         break
     elif [[ $i -eq $MAX_RETRIES ]]; then
