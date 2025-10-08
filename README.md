@@ -375,3 +375,31 @@ You can access this room with any Matrix client like Element:
 
 
 Our support team is available to help with installation issues, configuration questions, and best practices.
+
+
+
+## Complete Cleanup (Remove All Containers and Images, if you want to reinstall bytEM fresh)
+
+
+### 1. Stop and Remove All Containers
+```bash
+sudo docker stop $(sudo docker ps -aq)
+sudo docker rm $(sudo docker ps -aq)
+```
+
+### 2. Remove All Docker Images
+```bash
+sudo docker rmi $(sudo docker images -q)
+```
+
+### 3. Remove All Volumes (Optional - This will delete all data)
+```bash
+sudo docker volume rm $(sudo docker volume ls -q)
+```
+
+### 4. Clean Up Docker System (Remove all unused data)
+```bash
+sudo docker system prune -a --volumes
+```
+
+> **Warning:** These commands will permanently delete all Docker containers, images, and volumes on your system. Make sure to backup any important data before running these commands.

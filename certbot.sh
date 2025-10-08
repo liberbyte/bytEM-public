@@ -26,8 +26,9 @@ MATRIX_DOMAIN=$(grep "^MATRIX_SERVER_NAME=" .env.bytem | cut -d'=' -f2)
 
 # Variables
 SYNAPSE_CONTAINER_NAME="bytem-synapse"
-ADMIN_USERNAME=${PANTALAIMON_USERNAME}
-ADMIN_PASSWORD=${PANTALAIMON_PASSWORD}
+# use safe defaults so script doesn't exit when variables are missing
+ADMIN_USERNAME=${PANTALAIMON_USERNAME:-test}
+ADMIN_PASSWORD=${PANTALAIMON_PASSWORD:-test}
 MATRIX_URL="http://bytem-synapse:8008"
 RESTART_CONTAINER="bytem-be bytem-bot"
 
@@ -166,15 +167,16 @@ EOF
     sed -i 's|root /usr/share/nginx/html;.*try_files.*|return 301 https://\$server_name\$request_uri;|' generated_config_files/nginx_config/${BYTEM_DOMAIN}.conf
     
     # Generate matrix nginx config  
-    sed -e "s/\${DOMAIN}/$DOMAIN_NAME/g" \
-        -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
-        -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
-        -e "s/\${BOT_USER}/$BOT_USER_ID/g" \
-        -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
-        -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
-        -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
-        -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
-        -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
+    # use parameter expansion defaults to avoid unbound variable errors
+    sed -e "s|\${DOMAIN}|$DOMAIN_NAME|g" \
+        -e "s|\${BYTEM_DOMAIN}|$BYTEM_DOMAIN|g" \
+        -e "s|\${MATRIX_DOMAIN}|$MATRIX_DOMAIN|g" \
+        -e "s|\${BOT_USER}|${BOT_USER_ID:-@test:${MATRIX_DOMAIN}}|g" \
+        -e "s|\${RABBITMQ_USERNAME}|${RABBITMQ_USERNAME:-test}|g" \
+        -e "s|\${RABBITMQ_PASSWORD}|${RABBITMQ_PASSWORD:-test}|g" \
+        -e "s|\${SYNAPSE_POSTGRES_PASSWORD}|${SYNAPSE_POSTGRES_PASSWORD:-test}|g" \
+        -e "s|\${MATRIX_SSO_CLIENT_ID}|${MATRIX_SSO_CLIENT_ID:-test}|g" \
+        -e "s|\${MATRIX_SSO_CLIENT_SECRET}|${MATRIX_SSO_CLIENT_SECRET:-test}|g" \
         -e "s|\${CERT_PATH}|$CERT_PATH|g" \
         config_templates/nginx_config_templates/matrix.bytem.template > \
         generated_config_files/nginx_config/matrix.${BYTEM_DOMAIN}.conf

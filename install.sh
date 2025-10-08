@@ -25,7 +25,7 @@ set -u
 CONFIG_DIR="generated_config_files/"
 SYNAPSE_CONTAINER_NAME="bytem-synapse"
 ADMIN_USERNAME=${PANTALAIMON_USERNAME}
-ADMIN_PASSWORD=${PANTALAIMON_USERNAME}
+ADMIN_PASSWORD=${PANTALAIMON_PASSWORD}
 MATRIX_URL="http://bytem-synapse:8008"
 RESTART_CONTAINER="bytem-be bytem-bot bytem-app"
 
@@ -65,7 +65,7 @@ sleep 60
 header_message "Registering new Matrix user"
 
 log "Registering new Matrix user..."
-if sudo docker exec -it "${SYNAPSE_CONTAINER_NAME}" register_new_matrix_user -a -c data/homeserver.yaml -u "${ADMIN_USERNAME}" -p "${ADMIN_PASSWORD}" "${MATRIX_URL}"; then
+if sudo docker exec -it "${SYNAPSE_CONTAINER_NAME}" register_new_matrix_user -a -c /data/homeserver.yaml -u "${ADMIN_USERNAME}" -p "${ADMIN_PASSWORD}" "${MATRIX_URL}"; then
     log "User ${ADMIN_USERNAME} registered successfully."
 else
     log "Error: Failed to register user ${ADMIN_USERNAME}."
