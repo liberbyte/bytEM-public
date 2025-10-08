@@ -13,7 +13,7 @@ bytEM is a secure, decentralized data management framework, sometimes describe  
 - [bytEM Product Overview](https://liberbyte.com/bytEM.html)
 - Download the project overview (PDF) for a printable summary:
 - [bytEM Overview (PDF)](documentation_screenshots/bytem_overview.pdf)
--
+
 - [Contact Us](https://liberbyte.com/contact)
 
 Learn more about our secure communication solutions for organizations and businesses.
