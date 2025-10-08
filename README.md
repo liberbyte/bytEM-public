@@ -10,9 +10,9 @@ bytEM public repo - bytEM from Liberbyte GmbH
 
 bytEM is a secure, decentralized data management framework, sometimes describe  as “dmail i.e. email for data” easily enabling sharing, exchanging and also monetizing the data, Developed by [Liberbyte GmbH](https://liberbyte.com).
 
-- [bytEM Product Overview](https://liberbyte.com/bytEM.html)
-- Download the project overview (PDF) for a printable summary:
-- [bytEM Overview (PDF)](documentation_screenshots/bytem_overview.pdf)
+- [bytEM Product Overview Website](https://liberbyte.com/bytEM.html)
+- Or Download the project overview (PDF) for a printable summary:
+ [bytEM Overview (PDF)](documentation_screenshots/bytem_overview.pdf)
 
 - [Contact Us](https://liberbyte.com/contact)
 
