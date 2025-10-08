@@ -84,7 +84,7 @@ services:
       - bytem-network
 
   bytem-synapse:
-    image: docker.io/matrixdotorg/synapse:v1.123.0
+    image: liberbyteadmin/bytem:synapse
     container_name: bytem-synapse
     hostname: bytem-synapse
     restart: always
@@ -100,14 +100,6 @@ services:
       - ./generated_config_files/synapse_config:/data
     networks:
       - bytem-network
-    command: >
-      bash -c "
-        apt-get update &&
-        apt-get install -y wget &&
-        wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 &&
-        chmod +x /usr/local/bin/yq &&
-        exec /start.py
-      "
   
   bytem-synapse-db:
     image: docker.io/postgres:14-alpine

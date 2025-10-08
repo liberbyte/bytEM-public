@@ -5,10 +5,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Validate we're in the correct directory (should contain docker-compose file)
-if [[ ! -f "$SCRIPT_DIR/docker-compose-client.yaml" ]]; then
+if [[ ! -f "$SCRIPT_DIR/docker-compose.yaml" ]]; then
     echo "❌ Error: Script must be run from bytEM installation directory"
     echo "Current directory: $SCRIPT_DIR"
-    echo "Please run from the directory containing docker-compose-client.yaml"
+    echo "Please run from the directory containing docker-compose.yaml"
     exit 1
 fi
 
@@ -76,25 +76,25 @@ echo "✅ Current server IP: $SERVER_IP"
 cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
 
 # Remove existing allow/deny directives in /solr location
-sed -i '/location \/solr\/  {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
+sed -i '/location \/solr\/ {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
 
 # Add current server IP first
-sed -i "/location \/solr\/  {/a\\
-                allow $SERVER_IP;" "$NGINX_CONFIG_PATH"
+sed -i "/location \/solr\/ {/a\\
+        allow $SERVER_IP;" "$NGINX_CONFIG_PATH"
 
 # Add IPs for all domains from the whitelist
 for peer in $PEERS; do
     PEER_IP=$(dig +short matrix.$peer A | head -1)
     if [[ -n "$PEER_IP" && "$PEER_IP" != "$SERVER_IP" ]]; then
-        sed -i "/location \/solr\/  {/a\\
-                allow $PEER_IP;" "$NGINX_CONFIG_PATH"
+        sed -i "/location \/solr\/ {/a\\
+        allow $PEER_IP;" "$NGINX_CONFIG_PATH"
         echo "✅ Added peer IP: $PEER_IP (matrix.$peer)"
     fi
 done
 
 # Add deny all at the end
-sed -i "/location \/solr\/  {/a\\
-                deny all;" "$NGINX_CONFIG_PATH"
+sed -i "/location \/solr\/ {/a\\
+        deny all;" "$NGINX_CONFIG_PATH"
 
 echo "✅ Nginx config updated with IP restrictions for /solr"
 
