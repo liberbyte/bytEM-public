@@ -11,7 +11,7 @@ server {
     location /.well-known/matrix/server {
         default_type application/json;
         add_header Access-Control-Allow-Origin *;
-        return 200 '{"m.server": "${MATRIX_DOMAIN}:443"}';
+        return 200 '{"m.server": "$host:443"}';
     }
 
     location /_matrix {
