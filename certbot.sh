@@ -47,42 +47,48 @@ else
     # Ensure webroot is accessible
     chmod -R 755 "./certbot/www"
     
-    # Try Let's Encrypt with better error handling
-    echo -e "${YELLOW}Attempting Let's Encrypt certificate for ${BYTEM_DOMAIN} and ${MATRIX_DOMAIN}${NC}"
-    
-    if docker run --rm \
-        -v "${PWD}/certbot/conf:/etc/letsencrypt" \
-        -v "${PWD}/certbot/www:/var/www/certbot" \
-        certbot/certbot certonly \
-        --webroot \
-        --webroot-path=/var/www/certbot \
-        --email "$EMAIL" \
-        --agree-tos \
-        --no-eff-email \
-        --non-interactive \
-        --force-renewal \
-        --verbose \
-        -d "$BYTEM_DOMAIN" \
-        -d "$MATRIX_DOMAIN"; then
-        
-        echo -e "${GREEN}Let's Encrypt certificates obtained successfully${NC}"
-        
-        # Use the correct certificate path that matches docker-compose mount
+    # Check if certificates already exist
+    if [ -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ] && [ -f "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" ]; then
+        echo -e "${GREEN}Existing certificates found, skipping renewal${NC}"
         CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
         MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+    else
+        # Try Let's Encrypt with better error handling
+        echo -e "${YELLOW}Attempting Let's Encrypt certificate for ${BYTEM_DOMAIN} and ${MATRIX_DOMAIN}${NC}"
         
-        # Verify certificates exist locally
-        if [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
-            echo -e "${RED}Certificate files not found after successful generation${NC}"
+        if docker run --rm \
+            -v "${PWD}/certbot/conf:/etc/letsencrypt" \
+            -v "${PWD}/certbot/www:/var/www/certbot" \
+            certbot/certbot certonly \
+            --webroot \
+            --webroot-path=/var/www/certbot \
+            --email "$EMAIL" \
+            --agree-tos \
+            --no-eff-email \
+            --non-interactive \
+            --verbose \
+            -d "$BYTEM_DOMAIN" \
+            -d "$MATRIX_DOMAIN"; then
+            
+            echo -e "${GREEN}Let's Encrypt certificates obtained successfully${NC}"
+            
+            # Use the correct certificate path that matches docker-compose mount
+            CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+            MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+            
+            # Verify certificates exist locally
+            if [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
+                echo -e "${RED}Certificate files not found after successful generation${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}❌ Let's Encrypt certificate generation failed${NC}"
+            echo -e "${RED}Please check:${NC}"
+            echo -e "${RED}1. Domain ${BYTEM_DOMAIN} points to this server${NC}"
+            echo -e "${RED}2. Port 80 is accessible for HTTP validation${NC}"
+            echo -e "${RED}3. No rate limiting from Let's Encrypt${NC}"
             exit 1
         fi
-    else
-        echo -e "${RED}❌ Let's Encrypt certificate generation failed${NC}"
-        echo -e "${RED}Please check:${NC}"
-        echo -e "${RED}1. Domain ${BYTEM_DOMAIN} points to this server${NC}"
-        echo -e "${RED}2. Port 80 is accessible for HTTP validation${NC}"
-        echo -e "${RED}3. No rate limiting from Let's Encrypt${NC}"
-        exit 1
     fi
 fi
 
