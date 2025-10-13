@@ -44,7 +44,12 @@ if [[ "$BYTEM_DOMAIN" == *"localhost"* ]] || [[ "$BYTEM_DOMAIN" == *".local"* ]]
 else
     echo -e "${YELLOW}Production - Let's Encrypt certificates${NC}"
     
-    # Try Let's Encrypt
+    # Ensure webroot is accessible
+    chmod -R 755 "./certbot/www"
+    
+    # Try Let's Encrypt with better error handling
+    echo -e "${YELLOW}Attempting Let's Encrypt certificate for ${BYTEM_DOMAIN} and ${MATRIX_DOMAIN}${NC}"
+    
     if docker run --rm \
         -v "${PWD}/certbot/conf:/etc/letsencrypt" \
         -v "${PWD}/certbot/www:/var/www/certbot" \
@@ -54,40 +59,30 @@ else
         --email "$EMAIL" \
         --agree-tos \
         --no-eff-email \
-        --expand \
+        --non-interactive \
+        --force-renewal \
+        --verbose \
         -d "$BYTEM_DOMAIN" \
         -d "$MATRIX_DOMAIN"; then
         
         echo -e "${GREEN}Let's Encrypt certificates obtained successfully${NC}"
         
-        # Dynamically find the correct certificate directory
-        if [ -d "./certbot/conf/live/${BYTEM_DOMAIN}-0001" ]; then
-            CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001"
-            MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}-0001"
-        elif [ -d "./certbot/conf/live/${BYTEM_DOMAIN}" ]; then
-            CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
-            MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
-        else
-            echo -e "${RED}No certificate directory found${NC}"
+        # Use the correct certificate path that matches docker-compose mount
+        CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+        MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+        
+        # Verify certificates exist locally
+        if [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
+            echo -e "${RED}Certificate files not found after successful generation${NC}"
             exit 1
         fi
     else
-        echo -e "${YELLOW}Let's Encrypt failed, falling back to self-signed certificates${NC}"
-        
-        # Generate self-signed certificates for BYTEM domain
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" \
-            -out "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" \
-            -subj "/C=US/ST=State/L=City/O=BytEM/CN=${BYTEM_DOMAIN}" 2>/dev/null
-        
-        # Generate self-signed certificates for Matrix domain
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout "./certbot/conf/live/${MATRIX_DOMAIN}/privkey.pem" \
-            -out "./certbot/conf/live/${MATRIX_DOMAIN}/fullchain.pem" \
-            -subj "/C=US/ST=State/L=City/O=BytEM/CN=${MATRIX_DOMAIN}" 2>/dev/null
-        
-        CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
-        MATRIX_CERT_PATH="/etc/letsencrypt/live/${MATRIX_DOMAIN}"
+        echo -e "${RED}❌ Let's Encrypt certificate generation failed${NC}"
+        echo -e "${RED}Please check:${NC}"
+        echo -e "${RED}1. Domain ${BYTEM_DOMAIN} points to this server${NC}"
+        echo -e "${RED}2. Port 80 is accessible for HTTP validation${NC}"
+        echo -e "${RED}3. No rate limiting from Let's Encrypt${NC}"
+        exit 1
     fi
 fi
 

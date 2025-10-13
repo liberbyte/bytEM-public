@@ -56,6 +56,13 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Serve dynamic config.js
+    location /config.js {
+        alias /etc/nginx/conf.d/config.js;
+        add_header Content-Type application/javascript;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
     location /hub {
         proxy_pass http://bytem-be:3000/hub;
         proxy_buffering on;

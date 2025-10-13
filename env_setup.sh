@@ -250,6 +250,21 @@ for template in "${NGINX_TEMPLATES[@]}"; do
   fi
 done
 
+# Generate frontend config.js file
+header_message "Generating Frontend Config File:"
+CONFIG_JS_TEMPLATE="config_templates/config.js.template"
+CONFIG_JS_OUTPUT="$GENERATED_DIR/nginx_config/config.js"
+
+if [ -f "$CONFIG_JS_TEMPLATE" ]; then
+  sed \
+    -e "s/DOMAIN_PLACEHOLDER/$BYTEM_DOMAIN/g" \
+    "$CONFIG_JS_TEMPLATE" > "$CONFIG_JS_OUTPUT"
+  echo -e "${GREEN}Generated frontend config: $CONFIG_JS_OUTPUT${NC}"
+else
+  echo -e "${RED}ERROR: Template file not found: $CONFIG_JS_TEMPLATE${NC}"
+  exit 1
+fi
+
 header_message "Setting up SSL configuration"
 
 # Create SSL directories
