@@ -143,4 +143,28 @@ else
     log "Failed to remove unused Docker images."
 fi
 
+# Fix frontend hardcoded domains
+header_message "Fixing frontend configuration"
+source .env.bytem
+
+# Wait for container to be ready
+sleep 5
+
+# Fix hardcoded domains in frontend JavaScript
+if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
+    log "Backing up original frontend files..."
+    sudo docker exec bytem-app cp /usr/share/nginx/html/umi.js /usr/share/nginx/html/umi.js.backup 2>/dev/null || true
+    
+    log "Replacing hardcoded domains with current configuration..."
+    # Replace any hardcoded domains with current domains from env variables
+    sudo docker exec bytem-app sed -i "s/https:\/\/bytem\.[^\"']*\.[a-zA-Z]{2,}/https:\/\/${BYTEM_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/https:\/\/matrix\.[^\"']*\.[a-zA-Z]{2,}/https:\/\/${MATRIX_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/bytem\.[^\"']*\.[a-zA-Z]{2,}/${BYTEM_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/matrix\.[^\"']*\.[a-zA-Z]{2,}/${MATRIX_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    
+    log "Frontend configuration updated successfully."
+else
+    log "Frontend files not found, skipping domain fix."
+fi
+
 header_message "Script completed successfully."
