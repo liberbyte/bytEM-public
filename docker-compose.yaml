@@ -46,7 +46,7 @@ services:
       - 4000:4000
     volumes:
       - ./solr/data:/solr/data
-      - ./.env.bytem:/.env.bytem
+      - ./.env.bytem:/app/.env.bytem
     networks:
       - bytem-network
 

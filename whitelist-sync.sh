@@ -41,8 +41,10 @@ DOMAINS=$(curl -fsS "$REGISTRY_URL" | jq -r '.[]')
 echo "✅ Registry domains fetched successfully"
 
 # --- Filter domains to match current server's domain ---
-# Extract parent domain (liberbyte.app)
-CURRENT_DOMAIN="liberbyte.app"
+# Extract parent domain from nginx config filename (e.g., bytem.bm1.liberbyte.app.conf -> liberbyte.app)
+CONFIG_FILENAME=$(basename "$NGINX_CONFIG_PATH")
+FULL_DOMAIN=$(echo "$CONFIG_FILENAME" | sed 's/^bytem\.//' | sed 's/\.conf$//')
+CURRENT_DOMAIN=$(echo "$FULL_DOMAIN" | sed 's/^[^.]*\.//')
 
 # Filter domains to only include same parent domain
 FILTERED_DOMAINS=$(echo "$DOMAINS" | grep "\.${CURRENT_DOMAIN}$")

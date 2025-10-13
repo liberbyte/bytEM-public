@@ -256,19 +256,23 @@ header_message "Setting up SSL configuration"
 mkdir -p "certbot/conf/live/${BYTEM_DOMAIN}"
 mkdir -p "certbot/www"
 
-# Create empty SSL files if SSL is disabled
-if [ "${SSL_ENABLED:-false}" = "false" ]; then
-  # Create empty certificate files with proper content
-  echo "-----BEGIN PRIVATE KEY-----" > "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
-  echo "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB" >> "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
-  echo "-----END PRIVATE KEY-----" >> "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem"
-  
-  echo "-----BEGIN CERTIFICATE-----" > "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
-  echo "MIIDXTCCAkWgAwIBAgIJAJC1HiIAZAiIMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV" >> "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
-  echo "-----END CERTIFICATE-----" >> "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
-  
-  echo -e "${GREEN}Created dummy SSL certificate files for development${NC}"
-fi
+# Always create proper self-signed certificates for development
+echo -e "${YELLOW}Creating self-signed SSL certificates for development...${NC}"
+
+# Generate self-signed certificate
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" \
+    -out "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" \
+    -subj "/C=US/ST=State/L=City/O=BytEM/CN=${BYTEM_DOMAIN}" 2>/dev/null
+
+# Also create for matrix domain
+mkdir -p "certbot/conf/live/${MATRIX_DOMAIN}"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout "certbot/conf/live/${MATRIX_DOMAIN}/privkey.pem" \
+    -out "certbot/conf/live/${MATRIX_DOMAIN}/fullchain.pem" \
+    -subj "/C=US/ST=State/L=City/O=BytEM/CN=${MATRIX_DOMAIN}" 2>/dev/null
+
+echo -e "${GREEN}Created self-signed SSL certificates for development${NC}"
 
 header_message "Setting up Solr directories"
 
