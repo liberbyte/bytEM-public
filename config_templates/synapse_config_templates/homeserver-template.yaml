@@ -26,8 +26,6 @@ pid_file: "/data/homeserver.pid"
 enable_federation: true
 federation_port: 8448
 federation_domain_whitelist:
-  - matrix.bytem1.liberbyte.app
-  # - matrix.bytem.liberbyte.app
   - matrix.org
   - ${MATRIX_DOMAIN}
 federation_client_minimum_tls_version: 1.2
