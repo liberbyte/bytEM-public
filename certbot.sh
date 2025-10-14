@@ -210,7 +210,8 @@ else
     echo -e "${RED}❌ BYTEM HTTPS not responding${NC}"
 fi
 
-if curl -s -k -I "https://${MATRIX_DOMAIN}" | grep -q "200\|301\|302"; then
+# Test Matrix API endpoint instead of root domain
+if curl -s -k -I "https://${MATRIX_DOMAIN}/_matrix/client/versions" | grep -q "200\|301\|302"; then
     echo -e "${GREEN}✅ Matrix HTTPS working${NC}"
 else
     echo -e "${RED}❌ Matrix HTTPS not responding${NC}"

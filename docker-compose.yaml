@@ -10,8 +10,8 @@ services:
     env_file:
       - .env.bytem
     environment:
-      BYTEM_DOMAIN: ${EXCHANGE_SERVER_HOSTNAME}
-      MATRIX_DOMAIN: ${MATRIX_SERVER_NAME}
+      BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
+      MATRIX_DOMAIN: ${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
     ports:
       - 80:80
       - 443:443
