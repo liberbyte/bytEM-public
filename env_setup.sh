@@ -34,14 +34,22 @@ info_message() {
 # Directory to store all generated files
 GENERATED_DIR="generated_config_files"
 
-header_message "Creating the base directory '$GENERATED_DIR' to store config files generated from template files"
+header_message "Cleaning up any previous installation"
 
-# Check if the base directory already exists
-if [ -d "$GENERATED_DIR" ]; then
-  error_message "ERROR: The base directory '$GENERATED_DIR' already exists."
-  error_message "Please remove or rename the existing directory and try again."
-  exit 1
+# Stop any running containers and remove volumes
+info_message "Stopping Docker containers and removing volumes..."
+docker-compose down -v 2>/dev/null || true
+
+# Remove previous generated files
+if [ -d "$GENERATED_DIR" ] || [ -d "solr" ] || [ -d "certbot" ] || [ -f ".env.bytem" ]; then
+  info_message "Removing previous generated files..."
+  rm -rf generated_config_files/ solr/ certbot/ .env.bytem 2>/dev/null || true
+  success_message "Previous installation files removed."
+else
+  success_message "No previous installation found - starting fresh."
 fi
+
+header_message "Creating the base directory '$GENERATED_DIR' to store config files generated from template files"
 
 # Create the base directory
 mkdir -p "$GENERATED_DIR"
@@ -81,14 +89,26 @@ if [ $# -ge 1 ]; then
 elif [ -n "${DOMAIN_NAME:-}" ]; then
   echo -e "${YELLOW}Using DOMAIN_NAME from environment variable: $DOMAIN_NAME${NC}"
 else
-  prompt_for_value DOMAIN_NAME "a domain name (e.g., example.com)"
+  prompt_for_value DOMAIN_NAME "a domain name (e.g., example.com or liberbyte.app)"
+fi
+
+# Validate the domain name (format: <domain>.<extension>, no prefixes like www.)
+if [[ "$DOMAIN_NAME" =~ ^www\..* ]]; then
+  echo -e "${RED}ERROR: Domain should not start with 'www.' Expected format: <domain>.<extension> (e.g., example.com).${NC}"
+  exit 1
+elif [[ ! "$DOMAIN_NAME" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
+  echo -e "${RED}ERROR: Invalid domain name format. Expected format: <domain>.<extension> (e.g., example.com or example.co.uk).${NC}"
+  exit 1
 fi
 
 # Prompt for subdomain prefix (optional)
 if [ -n "${SUBDOMAIN_PREFIX:-}" ]; then
   echo -e "${YELLOW}Using SUBDOMAIN_PREFIX from environment variable: $SUBDOMAIN_PREFIX${NC}"
 else
-  read -rp "Enter subdomain prefix (optional, leave empty for direct bytem.domain): " SUBDOMAIN_PREFIX
+  echo -e "${CYAN}Examples:${NC}"
+  echo -e "${CYAN}  - If you enter 'bm4', your domains will be: bytem.bm4.${DOMAIN_NAME}${NC}"
+  echo -e "${CYAN}  - If you leave empty, your domains will be: bytem.${DOMAIN_NAME}${NC}"
+  read -rp "Enter subdomain prefix (optional, press Enter to skip): " SUBDOMAIN_PREFIX
 fi
 
 # Set up domain variables based on subdomain prefix
@@ -101,7 +121,8 @@ else
 fi
 
 echo -e "${GREEN}Configuration:${NC}"
-echo -e "${GREEN}  Main domain: $BYTEM_DOMAIN${NC}"
+echo -e "${GREEN}  Base domain: $DOMAIN_NAME${NC}"
+echo -e "${GREEN}  BytEM domain: $BYTEM_DOMAIN${NC}"
 echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 
 [[ -n "${BOT_USER:-}" ]] || prompt_for_value BOT_USER "BOT_USER (Will be converted to lowercase automatically)"
@@ -111,15 +132,6 @@ echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 [[ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]] || prompt_for_value SYNAPSE_POSTGRES_PASSWORD "SYNAPSE_POSTGRES_PASSWORD (Password for PostgresDB used by synapse container. User will be 'synapse')"
 [[ -n "${MATRIX_SSO_CLIENT_ID:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_ID "MATRIX_SSO_CLIENT_ID (Client ID for Matrix SSO)"
 [[ -n "${MATRIX_SSO_CLIENT_SECRET:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_SECRET "MATRIX_SSO_CLIENT_SECRET (Client Secret for Matrix SSO)"
-
-# Validate the domain name (format: <domain>.<extension>, no prefixes like www.)
-if [[ "$DOMAIN_NAME" =~ ^www\..* ]]; then
-  echo -e "${RED}ERROR: Domain should not start with 'www.'Expected format: <domain>.<extension> (e.g., example.com).${NC}"
-  exit 1
-elif [[ ! "$DOMAIN_NAME" =~ ^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$ ]]; then
-  echo -e "${RED}ERROR: Invalid domain name format. Expected format: <domain>.<extension> (e.g., example.com).${NC}"
-  exit 1
-fi
 
 header_message "Generating .env.bytem file:"
 
