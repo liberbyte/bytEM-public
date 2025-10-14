@@ -39,6 +39,14 @@ header_message "Changing the permissions of ${CONFIG_DIR}"
 log "Setting ownership for ${CONFIG_DIR}..."
 sudo chown -R 991:991 "${CONFIG_DIR}"
 
+header_message "Ensuring clean Docker environment"
+
+log "Stopping any existing containers..."
+sudo docker-compose down 2>/dev/null || true
+
+log "Removing old volumes to ensure fresh start..."
+sudo docker volume rm bytem-rabbitmq-data bytem-rabbitmq-log bytem-synapse-db-data 2>/dev/null || true
+
 header_message "Building and starting the bytem docker stack"
 
 log "Starting Docker containers..."
@@ -67,17 +75,33 @@ log "Checking Matrix server readiness..."
 MAX_WAIT=300  # 5 minutes
 WAIT_TIME=0
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+    # First check if container is running
+    if ! sudo docker ps | grep -q "${SYNAPSE_CONTAINER_NAME}"; then
+        log "ERROR: ${SYNAPSE_CONTAINER_NAME} container is not running!"
+        log "Checking container status and logs..."
+        sudo docker ps -a | grep "${SYNAPSE_CONTAINER_NAME}"
+        log "Recent logs from ${SYNAPSE_CONTAINER_NAME}:"
+        sudo docker logs --tail 20 "${SYNAPSE_CONTAINER_NAME}" 2>&1 || true
+        log "Please check the logs above for errors. Common issues:"
+        log "  1. Database password mismatch - ensure POSTGRES_PASSWORD matches SYNAPSE_POSTGRES_PASSWORD in .env.bytem"
+        log "  2. Database not ready - synapse container may need more time"
+        exit 1
+    fi
+    
     if sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -s http://localhost:8008/_matrix/client/versions >/dev/null 2>&1; then
         log "Matrix server is ready!"
         break
     fi
-    log "Matrix server not ready yet, waiting..."
+    log "Matrix server not ready yet, waiting... (${WAIT_TIME}s/${MAX_WAIT}s)"
     sleep 10
     WAIT_TIME=$((WAIT_TIME + 10))
 done
 
 if [ $WAIT_TIME -ge $MAX_WAIT ]; then
-    log "Warning: Matrix server may not be fully ready, but continuing..."
+    log "ERROR: Matrix server did not become ready within ${MAX_WAIT} seconds!"
+    log "Recent logs from ${SYNAPSE_CONTAINER_NAME}:"
+    sudo docker logs --tail 30 "${SYNAPSE_CONTAINER_NAME}" 2>&1 || true
+    exit 1
 fi
 
 header_message "Registering new Matrix user and getting bot token"
@@ -125,13 +149,14 @@ else
     fi
 fi
 
-header_message "Restarting ${RESTART_CONTAINER} container"
+header_message "Restarting all containers to apply new bot token"
 
-log "Restarting container ${RESTART_CONTAINER}..."
-if sudo docker restart ${RESTART_CONTAINER}; then
-    log "Container ${RESTART_CONTAINER} restarted successfully."
+log "Performing full restart to apply updated token..."
+if sudo docker-compose down && sudo docker-compose up -d; then
+    log "All containers restarted successfully with new token."
+    sleep 10  # Give containers time to initialize
 else
-    log "Failed to restart container ${RESTART_CONTAINER}."
+    log "Failed to restart containers."
     exit 1
 fi
 
