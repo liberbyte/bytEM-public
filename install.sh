@@ -192,4 +192,20 @@ else
     log "Frontend files not found, skipping domain fix."
 fi
 
+# Create welcome page for matrix subdomain
+log "Creating welcome page for matrix subdomain..."
+sudo docker exec bytem-app bash -c 'cat > /usr/share/nginx/html/matrix-welcome.html << "EOF"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Matrix Server</title>
+</head>
+<body>
+    <h1>Welcome to Nginx!</h1>
+    <p>Matrix server is running successfully.</p>
+</body>
+</html>
+EOF'
+log "Welcome page created successfully."
+
 header_message "Script completed successfully."
