@@ -64,6 +64,22 @@ server {
         sub_filter_once off;
     }
 
+    # Replace ANY hardcoded domains in JavaScript files (exclude config.js)
+    location ~* ^(?!/config\.js).*\.js$ {
+        root /usr/share/nginx/html;
+        
+        sub_filter_types application/javascript;
+        # Replace any bytem.*.* pattern (any subdomain, any TLD)
+        sub_filter_regex 'bytem\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' '${BYTEM_DOMAIN}';
+        # Replace any matrix.bytem.*.* pattern (any subdomain, any TLD)
+        sub_filter_regex 'matrix\.bytem\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' '${MATRIX_DOMAIN}';
+        # Replace localhost patterns
+        sub_filter 'localhost:3000' '${BYTEM_DOMAIN}';
+        sub_filter 'localhost:8008' '${MATRIX_DOMAIN}';
+        sub_filter '"localhost"' '"${BYTEM_DOMAIN}"';
+        sub_filter_once off;
+    }
+
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
