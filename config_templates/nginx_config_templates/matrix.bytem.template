@@ -36,6 +36,9 @@ server {
     add_header X-Content-Type-Options nosniff always;
     add_header X-XSS-Protection "1; mode=block" always;
 
+    # Root directory for welcome page
+    root /usr/share/nginx/html;
+
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
         try_files $uri =404;
@@ -61,5 +64,10 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $host;
         client_max_body_size 2G;
+    }
+
+    # Serve welcome page for root requests
+    location / {
+        try_files /matrix-welcome.html =404;
     }
 }
