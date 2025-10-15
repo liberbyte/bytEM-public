@@ -51,9 +51,44 @@ server {
         try_files $uri =404;
     }
 
+    # Replace hardcoded domains in JavaScript files (exclude config.js)
+    location ~* ^(?!/config\.js).*\.js$ {
+        root /usr/share/nginx/html;
+        
+        sub_filter_types application/javascript;
+        sub_filter 'bytem.bm3.liberbyte.app' '${BYTEM_DOMAIN}';
+        sub_filter 'matrix.bytem.bm3.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
+        sub_filter 'localhost:3000' '${BYTEM_DOMAIN}';
+        sub_filter 'localhost:8008' 'matrix.${BYTEM_DOMAIN}';
+        sub_filter '"localhost"' '"${BYTEM_DOMAIN}"';
+        sub_filter_once off;
+    }
+
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
+        
+        # Inject config.js script tag into HTML
+        sub_filter_types text/html;
+        sub_filter '<script src="/preload_helper.js"' '<script src="/config.js"></script><script src="/preload_helper.js"';
+        sub_filter_once on;
+    }
+
+    # Replace hardcoded domains in JavaScript files
+    location ~* \.js$ {
+        root /usr/share/nginx/html;
+        
+        # Replace hardcoded bm3 and localhost domains with current domain
+        sub_filter_types application/javascript text/javascript;
+        sub_filter 'bytem.bm3.liberbyte.app' '${BYTEM_DOMAIN}';
+        sub_filter 'matrix.bytem.bm3.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
+        sub_filter 'localhost:3000' 'https://${BYTEM_DOMAIN}';
+        sub_filter 'localhost:8008' 'https://matrix.${BYTEM_DOMAIN}';
+        sub_filter_once off;
+        
+        # Cache control for JS files
+        expires 1h;
+        add_header Cache-Control "public, immutable";
     }
 
     # Serve dynamic config.js
