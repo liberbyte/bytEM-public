@@ -98,11 +98,11 @@ when prompted enter the following:
 ![alt text](documentation_screenshots/image_6.png)
 
 
-### 2. login to docker hub
+<!-- ### 2. login to docker hub
 
 
 ![alt text](documentation_screenshots/image_2.png)
-
+ -->
 
 ### 3. Run installer: install.sh -
 
@@ -380,7 +380,7 @@ You can access this room with any Matrix client like Element:
 Our support team is available to help with installation issues, configuration questions, and best practices.
 
 
-
+<!-- 
 ## Complete Cleanup (Remove All Containers and Images, if you want to reinstall bytEM fresh)
 
 
@@ -405,4 +405,4 @@ sudo docker volume rm $(sudo docker volume ls -q)
 sudo docker system prune -a --volumes
 ```
 
-> **Warning:** These commands will permanently delete all Docker containers, images, and volumes on your system. Make sure to backup any important data before running these commands.
+> **Warning:** These commands will permanently delete all Docker containers, images, and volumes on your system. Make sure to backup any important data before running these commands. -->
