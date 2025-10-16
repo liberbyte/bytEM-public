@@ -51,33 +51,11 @@ server {
         try_files $uri =404;
     }
 
-    # Replace hardcoded domains in JavaScript files (exclude config.js)
-    location ~* ^(?!/config\.js).*\.js$ {
+    # Serve dynamic config.js (must come before generic .js location)
+    location /config.js {
         root /usr/share/nginx/html;
-        
-        sub_filter_types application/javascript;
-        sub_filter 'bytem.bm3.liberbyte.app' '${BYTEM_DOMAIN}';
-        sub_filter 'matrix.bytem.bm3.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
-        sub_filter 'localhost:3000' '${BYTEM_DOMAIN}';
-        sub_filter 'localhost:8008' 'matrix.${BYTEM_DOMAIN}';
-        sub_filter '"localhost"' '"${BYTEM_DOMAIN}"';
-        sub_filter_once off;
-    }
-
-    # Replace ANY hardcoded domains in JavaScript files (exclude config.js)
-    location ~* ^(?!/config\.js).*\.js$ {
-        root /usr/share/nginx/html;
-        
-        sub_filter_types application/javascript;
-        # Replace any bytem.*.* pattern (any subdomain, any TLD)
-        sub_filter_regex 'bytem\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' '${BYTEM_DOMAIN}';
-        # Replace any matrix.bytem.*.* pattern (any subdomain, any TLD)
-        sub_filter_regex 'matrix\.bytem\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' '${MATRIX_DOMAIN}';
-        # Replace localhost patterns
-        sub_filter 'localhost:3000' '${BYTEM_DOMAIN}';
-        sub_filter 'localhost:8008' '${MATRIX_DOMAIN}';
-        sub_filter '"localhost"' '"${BYTEM_DOMAIN}"';
-        sub_filter_once off;
+        add_header Content-Type application/javascript;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
     location / {
@@ -94,12 +72,26 @@ server {
     location ~* \.js$ {
         root /usr/share/nginx/html;
         
-        # Replace hardcoded bm3 and localhost domains with current domain
+        # Replace hardcoded domains with current domain
         sub_filter_types application/javascript text/javascript;
+        
+        # Replace bytem domain patterns
+        sub_filter 'bytem.bm1.liberbyte.app' '${BYTEM_DOMAIN}';
+        sub_filter 'bytem.bm2.liberbyte.app' '${BYTEM_DOMAIN}';
         sub_filter 'bytem.bm3.liberbyte.app' '${BYTEM_DOMAIN}';
+        sub_filter 'bytem.bm4.liberbyte.app' '${BYTEM_DOMAIN}';
+        
+        # Replace matrix domain patterns
+        sub_filter 'matrix.bytem.bm1.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
+        sub_filter 'matrix.bytem.bm2.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
         sub_filter 'matrix.bytem.bm3.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
+        sub_filter 'matrix.bytem.bm4.liberbyte.app' 'matrix.${BYTEM_DOMAIN}';
+        
+        # Replace localhost patterns
         sub_filter 'localhost:3000' 'https://${BYTEM_DOMAIN}';
         sub_filter 'localhost:8008' 'https://matrix.${BYTEM_DOMAIN}';
+        sub_filter '"localhost"' '"${BYTEM_DOMAIN}"';
+        
         sub_filter_once off;
         
         # Cache control for JS files
@@ -107,14 +99,19 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # Serve dynamic config.js
-    location /config.js {
-        alias /etc/nginx/conf.d/config.js;
-        add_header Content-Type application/javascript;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
     location /hub {
+        # CORS headers
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
+        
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "*";
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+            add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization";
+            return 204;
+        }
+        
         proxy_pass http://bytem-be:3000/hub;
         proxy_buffering on;
         proxy_set_header X-Real-IP $remote_addr;
@@ -130,6 +127,18 @@ server {
     }
 
     location /hub/authorize {
+        # CORS headers
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
+        
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "*";
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+            add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization";
+            return 204;
+        }
+        
         proxy_pass http://bytem-be:3000/hub/authorize;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Host $host;

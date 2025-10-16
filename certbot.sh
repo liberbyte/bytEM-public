@@ -182,10 +182,20 @@ if docker ps | grep -q "bytem-app"; then
             docker restart bytem-app
             sleep 5
         }
+        
+        # Copy config.js to web root to ensure it's accessible
+        echo -e "${YELLOW}Ensuring config.js is accessible...${NC}"
+        docker exec bytem-app cp /etc/nginx/conf.d/config.js /usr/share/nginx/html/config.js 2>/dev/null || true
+        echo -e "${GREEN}Config.js copied to web root${NC}"
     else
         echo -e "${YELLOW}Nginx config test failed, restarting container...${NC}"
         docker restart bytem-app
         sleep 5
+        
+        # Copy config.js to web root after restart
+        echo -e "${YELLOW}Ensuring config.js is accessible after restart...${NC}"
+        docker exec bytem-app cp /etc/nginx/conf.d/config.js /usr/share/nginx/html/config.js 2>/dev/null || true
+        echo -e "${GREEN}Config.js copied to web root${NC}"
     fi
 fi
 
