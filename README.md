@@ -56,15 +56,10 @@ Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM
 
 
 
+
+
 ### Install Docker and Docker Compose
 
-```sh
-sudo apt update
-sudo apt install docker docker-compose
-
-git clone https://github.com/liberbyte/bytEM-public.git
-cd bytEM-public
-```
 
 #### Optional: Move Docker Data to Dedicated Storage
 
@@ -89,6 +84,9 @@ sudo systemctl start docker
 # Verify Docker is using the new location
 sudo docker info | grep "Docker Root Dir"
 # Should show: Docker Root Dir: /xxx-liberbyte/bytem/docker
+
+# Navigate to dedicated storage and clone bytEM repository
+cd /xxx-liberbyte
 ```
 
 **Benefits:**
@@ -97,6 +95,16 @@ sudo docker info | grep "Docker Root Dir"
 - Installation proceeds normally - no changes to `env_setup.sh` or `install.sh` needed
 
 <!-- ![alt text](documentation_screenshots/image_5.png) -->
+
+
+```sh
+sudo apt update
+sudo apt install docker docker-compose
+
+git clone https://github.com/liberbyte/bytEM-public.git
+cd bytEM-public
+```
+
 
 
 
