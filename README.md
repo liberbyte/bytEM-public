@@ -56,16 +56,45 @@ Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM
 
 
 
-### install docker and docker-compose and clone the bytem-public repository from github
+### Install Docker and Docker Compose
+
 ```sh
 sudo apt update
 sudo apt install docker docker-compose
 
-
 git clone https://github.com/liberbyte/bytEM-public.git
 cd bytEM-public
-
 ```
+
+#### Optional: Move Docker Data to Dedicated Storage
+
+If your server has a dedicated storage volume (e.g., `/xxx-liberbyte`), you can move Docker's data directory to prevent filling up the root filesystem. **Do this BEFORE running `env_setup.sh` or `install.sh`.**
+
+```sh
+# Stop Docker service
+sudo systemctl stop docker
+
+# Create directory on dedicated storage
+sudo mkdir -p /xxx-liberbyte/bytem/docker
+
+# Move Docker data to dedicated storage
+sudo mv /var/lib/docker /xxx-liberbyte/bytem/docker
+
+# Create symlink
+sudo ln -s /xxx-liberbyte/bytem/docker /var/lib/docker
+
+# Start Docker service
+sudo systemctl start docker
+
+# Verify Docker is using the new location
+sudo docker info | grep "Docker Root Dir"
+# Should show: Docker Root Dir: /xxx-liberbyte/bytem/docker
+```
+
+**Benefits:**
+- Prevents root filesystem from filling up
+- All Docker data (images, containers, volumes) stored on large dedicated storage
+- Installation proceeds normally - no changes to `env_setup.sh` or `install.sh` needed
 
 <!-- ![alt text](documentation_screenshots/image_5.png) -->
 
@@ -336,28 +365,6 @@ After installation, perform these checks to confirm everything is working:
 
 ---
 
-## 9. Troubleshooting
-
-- If Nginx or bytEM login page does not load, check container status:
-  ```sh
-  sudo docker ps
-  ```
-- If login fails, check Synapse logs and user creation steps.
-- Ensure your domain is whitelisted and SSL certificates are valid.
-
----
-
-> **Note:**  
-> Replace all placeholder values in commands:
-> - `your-domain`: Your actual domain/subdomain
-> - `USERNAME`: The Matrix/bytEM username (e.g. `test`)
-> - `PASSWORD`: The password you set for the user
-
----
-
-**With these steps, you can verify your bytEM installation and ensure user login is working.**
-
----
 
 ## Support & Community
 
@@ -379,6 +386,29 @@ You can access this room with any Matrix client like Element:
 
 Our support team is available to help with installation issues, configuration questions, and best practices.
 
+
+### General Troubleshooting
+
+- If Nginx or bytEM login page does not load, check container status:
+  ```sh
+  sudo docker ps
+  ```
+- If login fails, check Synapse logs and user creation steps.
+- Ensure your domain is whitelisted and SSL certificates are valid.
+
+---
+
+> **Note:**  
+> Replace all placeholder values in commands:
+> - `your-domain`: Your actual domain/subdomain
+> - `USERNAME`: The Matrix/bytEM username (e.g. `test`)
+> - `PASSWORD`: The password you set for the user
+
+---
+
+**With these steps, you can verify your bytEM installation and ensure user login is working.**
+
+---
 
 <!-- 
 ## Complete Cleanup (Remove All Containers and Images, if you want to reinstall bytEM fresh)
