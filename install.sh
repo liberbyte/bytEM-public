@@ -44,9 +44,6 @@ header_message "Ensuring clean Docker environment"
 log "Stopping any existing containers..."
 sudo docker-compose down 2>/dev/null || true
 
-log "Removing old volumes to ensure fresh start..."
-sudo docker volume rm bytem-rabbitmq-data bytem-rabbitmq-log bytem-synapse-db-data 2>/dev/null || true
-
 header_message "Building and starting the bytem docker stack"
 
 log "Starting Docker containers..."
