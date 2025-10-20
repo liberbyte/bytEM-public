@@ -418,29 +418,28 @@ Our support team is available to help with installation issues, configuration qu
 
 ---
 
-<!-- 
-## Complete Cleanup (Remove All Containers and Images, if you want to reinstall bytEM fresh)
+## Upgrading bytEM to a New Version
 
+Upgrading bytEM is simple and preserves all your existing data, users, and certificates:
 
-### 1. Stop and Remove All Containers
 ```bash
-sudo docker stop $(sudo docker ps -aq)
-sudo docker rm $(sudo docker ps -aq)
+sudo ./install.sh
 ```
 
-### 2. Remove All Docker Images
-```bash
-sudo docker rmi $(sudo docker images -q)
-```
+**What happens during upgrade:**
+- Pulls the latest bytEM Docker images
+- Recreates containers with the new images
+- **Preserves all existing data:** Docker volumes, Matrix users, SSL certificates, and configurations remain intact
 
-### 3. Remove All Volumes (Optional - This will delete all data)
-```bash
-sudo docker volume rm $(sudo docker volume ls -q)
-```
+**No need to:**
+- Re-run `env_setup.sh`
+- Re-generate SSL certificates (`certbot.sh`)
+- Re-configure domain settings
+- Re-run whitelist sync (`whitelist-sync.sh`)
 
-### 4. Clean Up Docker System (Remove all unused data)
-```bash
-sudo docker system prune -a --volumes
-```
+**After upgrade, verify:**
+- Check containers are running: `sudo docker ps`
+- Test login with existing users
+- Verify services are accessible
 
-> **Warning:** These commands will permanently delete all Docker containers, images, and volumes on your system. Make sure to backup any important data before running these commands. -->
+---
