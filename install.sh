@@ -44,6 +44,11 @@ header_message "Ensuring clean Docker environment"
 log "Stopping any existing containers..."
 sudo docker-compose down 2>/dev/null || true
 
+header_message "Pulling latest Docker images"
+
+log "Pulling latest images from registry..."
+sudo docker-compose pull
+
 header_message "Building and starting the bytem docker stack"
 
 log "Starting Docker containers..."
