@@ -3,7 +3,7 @@ version: '3.6'
 services:
 
   bytem-app:
-    image: liberbyteadmin/bytem:app-new
+    image: liberbyteadmin/bytem:app-done
     container_name: bytem-app
     hostname: bytem-app
     restart: "always"
@@ -23,7 +23,7 @@ services:
       - bytem-network
 
   bytem-be:
-    image: liberbyteadmin/bytem:be-new
+    image: liberbyteadmin/bytem:be-done
     container_name: bytem-be
     hostname: bytem-be
     restart: always
@@ -41,7 +41,7 @@ services:
       - bytem-network
 
   bytem-bot:
-    image: liberbyteadmin/bytem:bot-new
+    image: liberbyteadmin/bytem:bot-done
     container_name: bytem-bot
     hostname: bytem-bot
     restart: always
