@@ -75,30 +75,31 @@ SERVER_IP=$(curl -4 -s ifconfig.me)
 echo "✅ Current server IP: $SERVER_IP"
 
 # --- Update nginx config with IP restrictions ---
-cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
+# COMMENTED OUT: Solr access restrictions
+# cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
 
-# Remove existing allow/deny directives in /solr location
-sed -i '/location \/solr\/ {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
+# # Remove existing allow/deny directives in /solr location
+# sed -i '/location \/solr\/ {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
 
-# Add current server IP first
-sed -i "/location \/solr\/ {/a\\
-        allow $SERVER_IP;" "$NGINX_CONFIG_PATH"
+# # Add current server IP first
+# sed -i "/location \/solr\/ {/a\\
+#         allow $SERVER_IP;" "$NGINX_CONFIG_PATH"
 
-# Add IPs for all domains from the whitelist
-for peer in $PEERS; do
-    PEER_IP=$(dig +short matrix.$peer A | head -1)
-    if [[ -n "$PEER_IP" && "$PEER_IP" != "$SERVER_IP" ]]; then
-        sed -i "/location \/solr\/ {/a\\
-        allow $PEER_IP;" "$NGINX_CONFIG_PATH"
-        echo "✅ Added peer IP: $PEER_IP (matrix.$peer)"
-    fi
-done
+# # Add IPs for all domains from the whitelist
+# for peer in $PEERS; do
+#     PEER_IP=$(dig +short matrix.$peer A | head -1)
+#     if [[ -n "$PEER_IP" && "$PEER_IP" != "$SERVER_IP" ]]; then
+#         sed -i "/location \/solr\/ {/a\\
+#         allow $PEER_IP;" "$NGINX_CONFIG_PATH"
+#         echo "✅ Added peer IP: $PEER_IP (matrix.$peer)"
+#     fi
+# done
 
-# Add deny all at the end
-sed -i "/location \/solr\/ {/a\\
-        deny all;" "$NGINX_CONFIG_PATH"
+# # Add deny all at the end
+# sed -i "/location \/solr\/ {/a\\
+#         deny all;" "$NGINX_CONFIG_PATH"
 
-echo "✅ Nginx config updated with IP restrictions for /solr"
+echo "✅ Nginx config IP restrictions for /solr DISABLED (commented out)"
 
 # --- Reload bytem-app container ---
 docker exec bytem-app nginx -s reload

@@ -17,6 +17,7 @@ services:
       - 443:443
     volumes:
       - ./generated_config_files/nginx_config:/etc/nginx/conf.d
+      - ./generated_config_files/nginx_config/config.js:/usr/share/nginx/html/config.js
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     networks:
