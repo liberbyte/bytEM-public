@@ -127,6 +127,7 @@ echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 
 [[ -n "${BOT_USER:-}" ]] || prompt_for_value BOT_USER "BOT_USER (Will be converted to lowercase automatically)"
     BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
+[[ -n "${BOT_PASSWORD:-}" ]] || prompt_for_value BOT_PASSWORD "BOT_PASSWORD (Password for the bot user)"
 [[ -n "${RABBITMQ_USERNAME:-}" ]] || prompt_for_value RABBITMQ_USERNAME "RABBITMQ_USERNAME (User for RabbitMQ)"
 [[ -n "${RABBITMQ_PASSWORD:-}" ]] || prompt_for_value RABBITMQ_PASSWORD "RABBITMQ_PASSWORD (Password for RabbitMQ)"
 [[ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]] || prompt_for_value SYNAPSE_POSTGRES_PASSWORD "SYNAPSE_POSTGRES_PASSWORD (Password for PostgresDB used by synapse container. User will be 'synapse')"
@@ -158,6 +159,7 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
             -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
             -e "s/\${BOT_USER}/$BOT_USER/g" \
+            -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
             -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
             -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
             -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
@@ -183,6 +185,7 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
       -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
       -e "s/\${BOT_USER}/$BOT_USER/g" \
+      -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
       -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
       -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
@@ -209,6 +212,7 @@ if [ -f "$HOMESERVER_TEMPLATE_FILE" ]; then
     -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
     -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
     -e "s/\${BOT_USER}/$BOT_USER/g" \
+    -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
     -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
     -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
     -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
@@ -248,6 +252,7 @@ for template in "${NGINX_TEMPLATES[@]}"; do
       -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
       -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
       -e "s/\${BOT_USER}/$BOT_USER/g" \
+      -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
       -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
       -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \

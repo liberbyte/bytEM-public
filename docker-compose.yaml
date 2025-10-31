@@ -3,7 +3,7 @@ version: '3.6'
 services:
 
   bytem-app:
-    image: liberbyteadmin/bytem:app-done
+    image: liberbyteadmin/bytem:app-new
     container_name: bytem-app
     hostname: bytem-app
     restart: "always"
@@ -24,7 +24,7 @@ services:
       - bytem-network
 
   bytem-be:
-    image: liberbyteadmin/bytem:be-done
+    image: liberbyteadmin/bytem:be-new
     container_name: bytem-be
     hostname: bytem-be
     restart: always
@@ -42,7 +42,7 @@ services:
       - bytem-network
 
   bytem-bot:
-    image: liberbyteadmin/bytem:bot-done
+    image: liberbyteadmin/bytem:bot-new
     container_name: bytem-bot
     hostname: bytem-bot
     restart: always
@@ -141,8 +141,17 @@ services:
     container_name: bytem-pwa
     hostname: bytem-pwa
     restart: always
+    depends_on:
+      - bytem-be
+    env_file:
+      - .env.bytem
+    environment:
+      BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
+      MATRIX_DOMAIN: ${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
     ports:
-      - 8002:80
+      - 8002:3002
+    volumes:
+      - ./generated_config_files/nginx_config/pwa-config.js:/usr/share/nginx/html/config.js
     networks:
       - bytem-network
 
