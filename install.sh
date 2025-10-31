@@ -183,11 +183,21 @@ if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
     sudo docker exec bytem-app cp /usr/share/nginx/html/umi.js /usr/share/nginx/html/umi.js.backup 2>/dev/null || true
     
     log "Replacing hardcoded domains with current configuration..."
-    # Replace any hardcoded domains with current domains from env variables
-    sudo docker exec bytem-app sed -i "s/https:\/\/bytem\.[^\"']*\.[a-zA-Z]{2,}/https:\/\/${BYTEM_DOMAIN}/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/https:\/\/matrix\.[^\"']*\.[a-zA-Z]{2,}/https:\/\/${MATRIX_DOMAIN}/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/bytem\.[^\"']*\.[a-zA-Z]{2,}/${BYTEM_DOMAIN}/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/matrix\.[^\"']*\.[a-zA-Z]{2,}/${MATRIX_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    # Replace quoted bytem domains
+    sudo docker exec bytem-app sed -i "s/\"bytem\.[^\"]*\"/\"${BYTEM_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/'bytem\.[^']*'/'${BYTEM_DOMAIN}'/g" /usr/share/nginx/html/umi.js
+    
+    # Replace quoted matrix.bytem domains  
+    sudo docker exec bytem-app sed -i "s/\"matrix\.bytem\.[^\"]*\"/\"${MATRIX_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/'matrix\.bytem\.[^']*'/'${MATRIX_DOMAIN}'/g" /usr/share/nginx/html/umi.js
+    
+    # Replace https URLs
+    sudo docker exec bytem-app sed -i "s|https://bytem\.[^/\"']*|https://${BYTEM_DOMAIN}|g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s|https://matrix\.bytem\.[^/\"']*|https://${MATRIX_DOMAIN}|g" /usr/share/nginx/html/umi.js
+    
+    # Replace unquoted domains (be more specific to avoid breaking other text)
+    sudo docker exec bytem-app sed -i "s/\bbytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${BYTEM_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/\bmatrix\.bytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${MATRIX_DOMAIN}/g" /usr/share/nginx/html/umi.js
     
     log "Frontend configuration updated successfully."
 else
