@@ -12,6 +12,11 @@ services:
     environment:
       BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
       MATRIX_DOMAIN: ${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
+      NODE_ENV: ${NODE_ENV}
+      CONFIG_TYPE: ${CONFIG_TYPE}
+      API_HOST: ${API_HOST}
+      MATRIX_SERVER: ${MATRIX_SERVER}
+      EXCH_SERVER: ${EXCH_SERVER}
     ports:
       - 80:80
       - 443:443
@@ -48,6 +53,8 @@ services:
     restart: always
     depends_on:
       - bytem-synapse
+    env_file:
+      - .env.bytem
     ports:
       - 4000:4000
     volumes:
