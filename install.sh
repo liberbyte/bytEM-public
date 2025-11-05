@@ -25,7 +25,7 @@ set -u
 CONFIG_DIR="generated_config_files/"
 SYNAPSE_CONTAINER_NAME="bytem-synapse"
 ADMIN_USERNAME=${PANTALAIMON_USERNAME}
-ADMIN_PASSWORD=${PANTALAIMON_USERNAME}
+ADMIN_PASSWORD=${PANTALAIMON_PASSWORD}
 MATRIX_URL="http://bytem-synapse:8008"
 RESTART_CONTAINER="bytem-be bytem-bot bytem-app"
 
@@ -116,7 +116,7 @@ BOT_USERNAME=$(echo "${BOT_USER_ID}" | sed 's/@\([^:]*\):.*/\1/')
 log "Bot username extracted: ${BOT_USERNAME}"
 
 log "Registering bot user..."
-if sudo docker exec "${SYNAPSE_CONTAINER_NAME}" register_new_matrix_user -a -c data/homeserver.yaml -u "${BOT_USERNAME}" -p "${BOT_USERNAME}" "${MATRIX_URL}"; then
+if sudo docker exec "${SYNAPSE_CONTAINER_NAME}" register_new_matrix_user -a -c data/homeserver.yaml -u "${BOT_USERNAME}" -p "${BOT_PASSWORD}" "${MATRIX_URL}"; then
     log "Bot user ${BOT_USERNAME} registered successfully."
 else
     log "Bot user ${BOT_USERNAME} may already exist, continuing..."
@@ -126,7 +126,7 @@ log "Getting access token for bot user..."
 # Get access token using Matrix API from inside container
 BOT_TOKEN=$(sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -s -X POST "${MATRIX_URL}/_matrix/client/r0/login" \
     -H "Content-Type: application/json" \
-    -d "{\"type\":\"m.login.password\",\"user\":\"${BOT_USERNAME}\",\"password\":\"${BOT_USERNAME}\"}" | \
+    -d "{\"type\":\"m.login.password\",\"user\":\"${BOT_USERNAME}\",\"password\":\"${BOT_PASSWORD}\"}" | \
     grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || echo "")
 
 if [ -n "$BOT_TOKEN" ] && [ "$BOT_TOKEN" != "null" ]; then
