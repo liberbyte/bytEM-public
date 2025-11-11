@@ -28,14 +28,14 @@ Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM
 
 ## Quick Start
 
-1. **Install Docker & Docker Compose**
-2. **Clone this repository**
-3. **Run environment setup:** `sudo ./env_setup.sh`
-4. **Run installer:** `sudo ./install.sh`
-5. **Run SSL setup:** `sudo ./certbot.sh`
-6. **Run whitelist sync:** `sudo ./whitelist-sync.sh`
-7. **Create your first bytEM (Matrix) user**
-8. **Test your installation (Nginx, bytEM login page, user login)**
+1. **Install Docker & Docker Compose** - Container runtime for bytEM services
+2. **Clone this repository** - Get the installation scripts and templates
+3. **Run environment setup:** `sudo ./env_setup.sh` - Generate custom configuration
+4. **Run installer:** `sudo ./install.sh` - Deploy all services
+5. **Run SSL setup:** `sudo ./certbot.sh` - Enable secure HTTPS connections
+6. **Run whitelist sync:** `sudo ./whitelist-sync.sh` - Join the trusted bytEM network
+7. **Create your first bytEM (Matrix) user** - Set up admin account
+8. **Test your installation** - Verify all components work correctly
 ---
 
 ## Prerequisites
@@ -109,6 +109,8 @@ cd bytEM-public
 
 
 ### 1. env_setup.sh -
+
+**Why needed:** Generates custom configuration files tailored to your domain and credentials, ensuring secure inter-service communication. The script will prompt you for your domain details and credentials.
 
 This script is the first one to run when setting up the bytEM application.  The main goal of this script is to generate the env variables and other config files to be used by the application as below -
 
@@ -189,6 +191,15 @@ This script is the third step to run when setting up the bytEM application. The 
 
 
 ### 6. Run Whitelist Sync
+
+
+Whitelisting is a security mechanism that controls which bytEM instances (servers) can communicate with your instance. Think of it as an approved partners list - only bytEM servers on this list can exchange data with your instance.
+
+**Why Whitelisting is Needed:**
+
+- **Security:** Prevents unauthorized servers from accessing your data catalog or attempting exchanges
+- **Trust Network:** Ensures you only connect with verified bytEM instances operated by trusted organizations
+- **Federation Control:** In a decentralized network, whitelisting defines your trusted peer network
 
 To keep your federation whitelist and `/solr` endpoint secure, run the whitelist sync script:
 
