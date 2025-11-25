@@ -133,6 +133,8 @@ echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 [[ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]] || prompt_for_value SYNAPSE_POSTGRES_PASSWORD "SYNAPSE_POSTGRES_PASSWORD (Password for PostgresDB used by synapse container. User will be 'synapse')"
 [[ -n "${MATRIX_SSO_CLIENT_ID:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_ID "MATRIX_SSO_CLIENT_ID (Client ID for Matrix SSO)"
 [[ -n "${MATRIX_SSO_CLIENT_SECRET:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_SECRET "MATRIX_SSO_CLIENT_SECRET (Client Secret for Matrix SSO)"
+[[ -n "${MARKET_LIST:-}" ]] || prompt_for_value MARKET_LIST "MARKET_LIST (URL for market list, e.g., https://bytem.app/markets/byteM-market-list)"
+[[ -n "${FEDERATION_MARKET_LIST_URL:-}" ]] || prompt_for_value FEDERATION_MARKET_LIST_URL "FEDERATION_MARKET_LIST_URL (URL for federation market list, e.g., https://bytem.app/markets/byteM-market-list)"
 
 header_message "Generating .env.bytem file:"
 
@@ -165,6 +167,8 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
             -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
             -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
+            -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
+            -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
             "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
           echo -e "${BRIGHT_GREEN}----- NEW ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
           break
@@ -191,6 +195,8 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
       -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
+      -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
+      -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
       "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
     echo -e "${BRIGHT_GREEN}----- ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
   fi

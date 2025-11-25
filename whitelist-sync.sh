@@ -12,8 +12,22 @@ if [[ ! -f "$SCRIPT_DIR/docker-compose.yaml" ]]; then
     exit 1
 fi
 
-# Registry endpoint
-REGISTRY_URL="https://bytem.app/markets/testing/liberbyte-testing-bfr"
+# Load environment variables from .env.bytem
+if [[ -f "$SCRIPT_DIR/.env.bytem" ]]; then
+    source "$SCRIPT_DIR/.env.bytem"
+    echo "✅ Loaded configuration from .env.bytem"
+else
+    echo "❌ Error: .env.bytem file not found. Please run env_setup.sh first."
+    exit 1
+fi
+
+# Validate MARKET_LIST is set
+if [[ -z "${MARKET_LIST:-}" ]]; then
+    echo "❌ Error: MARKET_LIST not found in .env.bytem. Please run env_setup.sh first."
+    exit 1
+fi
+
+echo "✅ Using market list URL: $MARKET_LIST"
 # Local homeserver.yaml path
 HOMESERVER_PATH="$SCRIPT_DIR/generated_config_files/synapse_config/homeserver.yaml"
 # Nginx config path - dynamically find the config file
@@ -37,7 +51,7 @@ echo "✅ Configuration files found"
 echo "✅ Using nginx config: $NGINX_CONFIG_PATH"
 
 # --- Fetch domains ---
-DOMAINS=$(curl -fsS "$REGISTRY_URL" | jq -r '.[]')
+DOMAINS=$(curl -fsS "$MARKET_LIST" | jq -r '.[]')
 echo "✅ Registry domains fetched successfully"
 
 # --- Filter domains to match current server's domain ---
