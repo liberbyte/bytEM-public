@@ -13,7 +13,7 @@ if [[ ! -f "$SCRIPT_DIR/docker-compose.yaml" ]]; then
 fi
 
 # Registry endpoint
-REGISTRY_URL="https://bytem.app/markets/testing/bytEM-liberbyte-testing"
+REGISTRY_URL="https://bytem.app/markets/testing/liberbyte-testing-bfr"
 # Local homeserver.yaml path
 HOMESERVER_PATH="$SCRIPT_DIR/generated_config_files/synapse_config/homeserver.yaml"
 # Nginx config path - dynamically find the config file
