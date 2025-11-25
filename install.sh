@@ -39,10 +39,20 @@ header_message "Changing the permissions of ${CONFIG_DIR}"
 log "Setting ownership for ${CONFIG_DIR}..."
 sudo chown -R 991:991 "${CONFIG_DIR}"
 
-header_message "Ensuring clean Docker environment"
 
-log "Stopping any existing containers..."
-sudo docker-compose down 2>/dev/null || true
+# Prompt user for Docker cleanup
+header_message "Docker Cleanup Options"
+echo -e "${YELLOW}Do you want to remove Docker containers and volumes?${NC}"
+echo -e "${YELLOW}Choosing 'yes' will delete all containers and their volumes (data will be lost).${NC}"
+echo -e "${YELLOW}Choosing 'no' will only stop and remove containers, keeping volumes (data will be preserved).${NC}"
+read -rp "Remove volumes as well? (yes/no): " REMOVE_VOLUMES
+if [[ "$REMOVE_VOLUMES" =~ ^[Yy][Ee]?[Ss]?$ ]]; then
+    log "Stopping Docker containers and removing volumes..."
+    sudo docker-compose down -v 2>/dev/null || true
+else
+    log "Stopping Docker containers (volumes will be kept)..."
+    sudo docker-compose down 2>/dev/null || true
+fi
 
 header_message "Pulling latest Docker images"
 
@@ -85,7 +95,7 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
         log "Recent logs from ${SYNAPSE_CONTAINER_NAME}:"
         sudo docker logs --tail 20 "${SYNAPSE_CONTAINER_NAME}" 2>&1 || true
         log "Please check the logs above for errors. Common issues:"
-        log "  1. Database password mismatch - ensure POSTGRES_PASSWORD matches SYNAPSE_POSTGRES_PASSWORD in .env.bytem"
+        log "  1. Database password mismatch - ensure POSTGRES_PASSWORD matches POSTGRES_PASSWORD in .env.bytem"
         log "  2. Database not ready - synapse container may need more time"
         exit 1
     fi

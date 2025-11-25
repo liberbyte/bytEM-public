@@ -36,9 +36,6 @@ GENERATED_DIR="generated_config_files"
 
 header_message "Cleaning up any previous installation"
 
-# Stop any running containers and remove volumes
-info_message "Stopping Docker containers and removing volumes..."
-docker-compose down -v 2>/dev/null || true
 
 # Remove previous generated files
 if [ -d "$GENERATED_DIR" ] || [ -d "solr" ] || [ -d "certbot" ] || [ -f ".env.bytem" ]; then
@@ -125,16 +122,84 @@ echo -e "${GREEN}  Base domain: $DOMAIN_NAME${NC}"
 echo -e "${GREEN}  BytEM domain: $BYTEM_DOMAIN${NC}"
 echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 
-[[ -n "${BOT_USER:-}" ]] || prompt_for_value BOT_USER "BOT_USER (Will be converted to lowercase automatically)"
-    BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
-[[ -n "${BOT_PASSWORD:-}" ]] || prompt_for_value BOT_PASSWORD "BOT_PASSWORD (Password for the bot user)"
-[[ -n "${RABBITMQ_USERNAME:-}" ]] || prompt_for_value RABBITMQ_USERNAME "RABBITMQ_USERNAME (User for RabbitMQ)"
-[[ -n "${RABBITMQ_PASSWORD:-}" ]] || prompt_for_value RABBITMQ_PASSWORD "RABBITMQ_PASSWORD (Password for RabbitMQ)"
-[[ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]] || prompt_for_value SYNAPSE_POSTGRES_PASSWORD "SYNAPSE_POSTGRES_PASSWORD (Password for PostgresDB used by synapse container. User will be 'synapse')"
-[[ -n "${MATRIX_SSO_CLIENT_ID:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_ID "MATRIX_SSO_CLIENT_ID (Client ID for Matrix SSO)"
-[[ -n "${MATRIX_SSO_CLIENT_SECRET:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_SECRET "MATRIX_SSO_CLIENT_SECRET (Client Secret for Matrix SSO)"
-[[ -n "${MARKET_LIST:-}" ]] || prompt_for_value MARKET_LIST "MARKET_LIST (URL for market list, e.g., https://bytem.app/markets/byteM-market-list)"
-[[ -n "${FEDERATION_MARKET_LIST_URL:-}" ]] || prompt_for_value FEDERATION_MARKET_LIST_URL "FEDERATION_MARKET_LIST_URL (URL for federation market list, e.g., https://bytem.app/markets/byteM-market-list)"
+
+ # Function to generate an 8-character random string (lowercase letters and numbers)
+generate_simple_password() {
+  # Produce an 8-char string of lowercase letters and digits.
+  # Use a resilient pipeline: if tr gets SIGPIPE, don't let set -e stop the script.
+  local out
+  out=$(tr -dc 'a-z0-9' </dev/urandom | head -c 8) || true
+  # If output is empty or too short (rare), try a fallback loop a few times
+  if [ -z "$out" ] || [ "${#out}" -lt 8 ]; then
+    local i=0
+    while [ "${#out}" -lt 8 ] && [ $i -lt 5 ]; do
+      out=$(tr -dc 'a-z0-9' </dev/urandom | head -c 8) || true
+      i=$((i+1))
+    done
+  fi
+  # Final fallback: use /dev/urandom hex if still empty
+  if [ -z "$out" ] || [ "${#out}" -lt 8 ]; then
+    out=$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n' | tr 'a-f' 'a-f' | head -c 8)
+  fi
+  echo "$out"
+}
+
+# (credential generation checkpoint)
+
+# Mask a secret for display: show first 2 and last 2 chars with **** in between
+mask_value() {
+  local v="$1"
+  if [ -z "$v" ]; then
+    echo ""
+    return
+  fi
+  local len=${#v}
+  if [ "$len" -le 4 ]; then
+    echo "****"
+  else
+    local first=${v:0:2}
+    local last=${v: -2}
+    echo "${first}****${last}"
+  fi
+}
+
+if [ -z "${BOT_USER:-}" ]; then
+  BOT_USER=$(generate_simple_password)
+  info_message "Generated BOT_USER: $(mask_value "$BOT_USER")"
+fi
+BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
+
+# Set or generate credentials
+if [ -z "${BOT_PASSWORD:-}" ]; then
+  BOT_PASSWORD=$(generate_simple_password)
+  info_message "Generated BOT_PASSWORD: $(mask_value "$BOT_PASSWORD")"
+fi
+if [ -z "${RABBITMQ_USERNAME:-}" ]; then
+  RABBITMQ_USERNAME=bytemuser
+fi
+if [ -z "${RABBITMQ_PASSWORD:-}" ]; then
+  RABBITMQ_PASSWORD=$(generate_simple_password)
+  info_message "Generated RABBITMQ_PASSWORD: $(mask_value "$RABBITMQ_PASSWORD")"
+fi
+if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+  POSTGRES_PASSWORD=$(generate_simple_password)
+  info_message "Generated POSTGRES_PASSWORD: $(mask_value "$POSTGRES_PASSWORD")"
+fi
+if [ -z "${MATRIX_SSO_CLIENT_ID:-}" ]; then
+  MATRIX_SSO_CLIENT_ID=bytemclient
+fi
+if [ -z "${MATRIX_SSO_CLIENT_SECRET:-}" ]; then
+  MATRIX_SSO_CLIENT_SECRET=$(generate_simple_password)
+  info_message "Generated MATRIX_SSO_CLIENT_SECRET: $(mask_value "$MATRIX_SSO_CLIENT_SECRET")"
+fi
+if [ -z "${MARKET_LIST:-}" ]; then
+  prompt_for_value MARKET_LIST "MARKET_LIST (URL for market list, e.g., https://bytem.app/markets/byteM-market-list)"
+  echo "Received MARKET_LIST: $(mask_value "$MARKET_LIST")"
+fi
+if [ -z "${FEDERATION_MARKET_LIST_URL:-}" ]; then
+  prompt_for_value FEDERATION_MARKET_LIST_URL "FEDERATION_MARKET_LIST_URL (URL for federation market list, e.g., https://bytem.app/markets/byteM-market-list)"
+  echo "Received FEDERATION_MARKET_LIST_URL: $(mask_value "$FEDERATION_MARKET_LIST_URL")"
+fi
 
 header_message "Generating .env.bytem file:"
 
@@ -164,7 +229,7 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
             -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
             -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
-            -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+            -e "s/\${POSTGRES_PASSWORD}/$POSTGRES_PASSWORD/g" \
             -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
             -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
             -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
@@ -192,7 +257,7 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
       -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
       -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
-      -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+      -e "s/\${POSTGRES_PASSWORD}/$POSTGRES_PASSWORD/g" \
       -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
       -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
@@ -221,7 +286,7 @@ if [ -f "$HOMESERVER_TEMPLATE_FILE" ]; then
     -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
     -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
     -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
-    -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+    -e "s/\${POSTGRES_PASSWORD}/$POSTGRES_PASSWORD/g" \
     -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
     -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
     "$HOMESERVER_TEMPLATE_FILE" > "$HOMESERVER_OUTPUT_FILE"
@@ -261,7 +326,7 @@ for template in "${NGINX_TEMPLATES[@]}"; do
       -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
       -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
       -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
-      -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
+      -e "s/\${POSTGRES_PASSWORD}/$POSTGRES_PASSWORD/g" \
       -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
       -e "s|\${CERT_PATH}|$CERT_PATH|g" \

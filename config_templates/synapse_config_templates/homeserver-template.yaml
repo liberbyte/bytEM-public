@@ -58,7 +58,7 @@ database:
   name: psycopg2
   args:
     user: synapse
-    password: ${SYNAPSE_POSTGRES_PASSWORD}
+    password: ${POSTGRES_PASSWORD}
     dbname: synapse
     host: bytem-synapse-db #you can use docker inspect container_name to fill host section
     cp_min: 5
