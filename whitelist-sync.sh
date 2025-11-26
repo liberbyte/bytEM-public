@@ -122,3 +122,21 @@ echo "✅ Nginx reloaded in bytem-app container"
 # --- Reload synapse container ---
 docker kill -s HUP bytem-synapse
 echo "✅ Synapse configuration reloaded"
+
+# Load environment variables
+source .env.bytem
+
+# Set rate limit override for test user
+echo "Setting rate limit override..."
+curl --location "https://${MATRIX_DOMAIN}/_synapse/admin/v1/users/${MATRIX_ADMIN_USER}/override_ratelimit" \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer ${BOT_USER_ACCESS_TOKEN}" \
+--data '{
+    "messages_per_second": 0,
+    "burst_count": 0
+}' > /dev/null 2>&1
+
+# Final container restart
+echo "Final container restart..."
+docker restart bytem-synapse bytem-bot bytem-be bytem-app > /dev/null 2>&1
+echo "✅ bytEM installation completed successfully"
