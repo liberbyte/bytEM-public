@@ -5,7 +5,8 @@
 set -e
 
 USERS=(tero ahmad neel yugank)
-PASSWORD="BytEM2025!"
+read -rsp "Enter password for all users: " PASSWORD
+echo
 CONTAINER="bytem-synapse"
 HOMESERVER_YAML="/data/homeserver.yaml"
 MATRIX_URL="http://localhost:8008"
