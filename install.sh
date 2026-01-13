@@ -42,12 +42,32 @@ sudo chown -R 991:991 "${CONFIG_DIR}"
 header_message "Ensuring clean Docker environment"
 
 log "Stopping any existing containers..."
-sudo docker-compose down 2>/dev/null || true
+sudo docker-compose stop 2>/dev/null || true
 
 header_message "Pulling latest Docker images"
 
-log "Pulling latest images from registry..."
-sudo docker-compose pull
+log "Checking and pulling images only if newer  version available..."
+# Get list of services from docker-compose.yml
+SERVICES=$(sudo docker-compose config --services)
+UPDATED_SERVICES=""
+for service in $SERVICES; do
+    IMAGE=$(sudo docker-compose config | grep -A5 "^  $service:" | grep "image:" | awk '{print $2}' | head -1)
+    if [ -n "$IMAGE" ]; then
+        log "Checking $service ($IMAGE)..."
+        if sudo docker pull "$IMAGE" 2>&1 | grep -q "Status: Image is up to date"; then
+            log "$service: Using cached image"
+        else
+            log "$service: Pulled newer image"
+            UPDATED_SERVICES="$UPDATED_SERVICES $service"
+        fi
+    fi
+done
+
+# Remove containers ONLY for updated services
+for service in $UPDATED_SERVICES; do
+    log "Removing container for updated services (having new images): $service"
+    sudo docker-compose rm -f "$service" 2>/dev/null || true
+done
 
 header_message "Building and starting the bytem docker stack"
 

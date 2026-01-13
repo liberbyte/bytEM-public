@@ -123,6 +123,18 @@ sed -i "/location \/solr\/ {/,/proxy_pass/{/proxy_pass/i\\        # Block all ot
 
 echo "✅ Solr access restricted: Federation servers allowed, public access blocked"
 
+# --- Check if containers are running before reloading ---
+check_container_running() {
+    local container_name=$1
+    if ! docker ps --filter "name=$container_name" --filter "status=running" | grep -q "$container_name"; then
+        echo "❌ Error: Container $container_name is not running. Please start it with: docker-compose up -d $container_name"
+        exit 1
+    fi
+}
+
+check_container_running bytem-app
+check_container_running bytem-synapse
+
 # --- Reload bytem-app container ---
 docker exec bytem-app nginx -s reload
 echo "✅ Nginx reloaded in bytem-app container"
