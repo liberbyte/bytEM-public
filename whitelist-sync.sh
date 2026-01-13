@@ -28,8 +28,10 @@ if [[ -z "${MARKET_LIST:-}" ]]; then
 fi
 
 echo "✅ Using market list URL: $MARKET_LIST"
+
 # Local homeserver.yaml path
 HOMESERVER_PATH="$SCRIPT_DIR/generated_config_files/synapse_config/homeserver.yaml"
+
 # Nginx config path - dynamically find the config file
 NGINX_CONFIG_DIR="$SCRIPT_DIR/generated_config_files/nginx_config"
 NGINX_CONFIG_PATH=$(find "$NGINX_CONFIG_DIR" -name "bytem.*.conf" | head -1)
@@ -55,12 +57,10 @@ DOMAINS=$(curl -fsS "$MARKET_LIST" | jq -r '.[]')
 echo "✅ Registry domains fetched successfully"
 
 # --- Filter domains to match current server's domain ---
-# Extract parent domain from nginx config filename (e.g., bytem.bm1.liberbyte.app.conf -> liberbyte.app)
 CONFIG_FILENAME=$(basename "$NGINX_CONFIG_PATH")
 FULL_DOMAIN=$(echo "$CONFIG_FILENAME" | sed 's/^bytem\.//' | sed 's/\.conf$//')
 CURRENT_DOMAIN=$(echo "$FULL_DOMAIN" | sed 's/^[^.]*\.//')
 
-# Filter domains to only include same parent domain
 FILTERED_DOMAINS=$(echo "$DOMAINS" | grep "\.${CURRENT_DOMAIN}$")
 PEERS=$(echo "$FILTERED_DOMAINS" | tr '\n' ' ')
 echo "✅ Current domain: $CURRENT_DOMAIN"
@@ -69,15 +69,15 @@ echo "✅ Filtered peers for whitelist: $PEERS"
 # --- Backup original file ---
 cp "$HOMESERVER_PATH" "$HOMESERVER_PATH.bak"
 
-# --- Clean up the file completely ---
+# --- Clean up existing whitelist ---
 sed -i '/^federation_domain_whitelist:/d' "$HOMESERVER_PATH"
 sed -i '/^  - matrix\./d' "$HOMESERVER_PATH"
 
-# --- Add whitelist after enable_federation line ---
+# --- Add whitelist section ---
 sed -i '/^enable_federation: true$/a\
 federation_domain_whitelist:' "$HOMESERVER_PATH"
 
-# --- Add each domain from market list ---
+# --- Add each domain ---
 for domain in $DOMAINS; do
   sed -i "/^federation_domain_whitelist:$/a\\  - matrix.$domain" "$HOMESERVER_PATH"
 done
@@ -88,32 +88,40 @@ echo "✅ Whitelist updated with all market domains"
 SERVER_IP=$(curl -4 -s ifconfig.me)
 echo "✅ Current server IP: $SERVER_IP"
 
-# --- Update nginx config with IP restrictions ---
-# COMMENTED OUT: Solr access restrictions
-# cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
+# --- Update nginx config with Solr access restrictions ---
+# Block public access to /solr, allow only federation and internal access
 
-# # Remove existing allow/deny directives in /solr location
-# sed -i '/location \/solr\/ {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
+cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
 
-# # Add current server IP first
-# sed -i "/location \/solr\/ {/a\\
-#         allow $SERVER_IP;" "$NGINX_CONFIG_PATH"
+# Remove existing allow/deny directives in /solr location
+sed -i '/[[:space:]]*location \/solr\/ {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
 
-# # Add IPs for all domains from the whitelist
-# for peer in $PEERS; do
-#     PEER_IP=$(dig +short matrix.$peer A | head -1)
-#     if [[ -n "$PEER_IP" && "$PEER_IP" != "$SERVER_IP" ]]; then
-#         sed -i "/location \/solr\/ {/a\\
-#         allow $PEER_IP;" "$NGINX_CONFIG_PATH"
-#         echo "✅ Added peer IP: $PEER_IP (matrix.$peer)"
-#     fi
-# done
+# Add all allow rules first
+sed -i "/[[:space:]]*location \/solr\/ {/a\\
+        # Allow internal container access\\
+        allow 127.0.0.1;\\
+        allow ::1;\\
+        allow 172.16.0.0/12;\\
+        allow 10.0.0.0/8;" "$NGINX_CONFIG_PATH"
 
-# # Add deny all at the end
-# sed -i "/location \/solr\/ {/a\\
-#         deny all;" "$NGINX_CONFIG_PATH"
+# Add federation server IPs
+echo "✅ Adding federation server IPs to Solr whitelist..."
+for domain in $DOMAINS; do
+    DOMAIN_IP=$(dig +short "$domain" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+    if [[ -n "$DOMAIN_IP" ]]; then
+        sed -i "/allow 10.0.0.0\/8;/a\\        allow $DOMAIN_IP;  # $domain" "$NGINX_CONFIG_PATH"
+        echo "✅ Added Solr access for $domain ($DOMAIN_IP)"
+    else
+        echo "⚠️  Could not resolve IP for $domain"
+    fi
+done
 
-echo "✅ Nginx config IP restrictions for /solr DISABLED (commented out)"
+# Add single deny all at the very end (after all allow rules)
+sed -i "/location \/solr\/ {/,/proxy_pass/{/proxy_pass/i\\        # Block all other public access\\
+        deny all;
+}" "$NGINX_CONFIG_PATH"
+
+echo "✅ Solr access restricted: Federation servers allowed, public access blocked"
 
 # --- Reload bytem-app container ---
 docker exec bytem-app nginx -s reload
@@ -123,10 +131,10 @@ echo "✅ Nginx reloaded in bytem-app container"
 docker kill -s HUP bytem-synapse
 echo "✅ Synapse configuration reloaded"
 
-# Load environment variables
+# Load environment variables again
 source .env.bytem
 
-# Set rate limit override for test user
+# Set rate limit override for admin/bot
 echo "Setting rate limit override..."
 curl --location "https://${MATRIX_DOMAIN}/_synapse/admin/v1/users/${MATRIX_ADMIN_USER}/override_ratelimit" \
 --header 'Content-Type: application/json' \
@@ -140,3 +148,4 @@ curl --location "https://${MATRIX_DOMAIN}/_synapse/admin/v1/users/${MATRIX_ADMIN
 echo "Final container restart..."
 docker restart bytem-synapse bytem-bot bytem-be bytem-app > /dev/null 2>&1
 echo "✅ bytEM installation completed successfully"
+
