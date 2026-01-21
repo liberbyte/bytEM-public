@@ -65,17 +65,44 @@ else
     chmod -R 755 "./certbot/www"
     
     # Check if certificates already exist and are valid
+    SKIP_RENEWAL=false
     if [ -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ] && [ -f "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" ]; then
         echo -e "${YELLOW}Existing certificates found, checking validity...${NC}"
         
-        # Check if certificate is still valid (more than 30 days)
-        if docker run --rm -v "${PWD}/certbot/conf:/etc/letsencrypt" certbot/certbot certificates 2>/dev/null | grep -q "VALID"; then
-            echo -e "${GREEN}Existing certificates are valid, skipping renewal${NC}"
-            CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
-            MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+        # Check certificate expiry date
+        CERT_FILE="./certbot/conf/live/${BYTEM_DOMAIN}/cert.pem"
+        if [ ! -f "$CERT_FILE" ]; then
+            CERT_FILE="./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem"
+        fi
+        
+        if [ -f "$CERT_FILE" ]; then
+            EXPIRY_DATE=$(openssl x509 -in "$CERT_FILE" -noout -enddate 2>/dev/null | cut -d= -f2)
+            if [ -n "$EXPIRY_DATE" ]; then
+                EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null)
+                CURRENT_EPOCH=$(date +%s)
+                DAYS_REMAINING=$(( (EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
+                
+                echo -e "${CYAN}Certificate expires: $EXPIRY_DATE${NC}"
+                echo -e "${CYAN}Days remaining: $DAYS_REMAINING${NC}"
+                
+                if [ "$DAYS_REMAINING" -gt 30 ]; then
+                    echo -e "${GREEN}Certificate has $DAYS_REMAINING days remaining (>30), skipping renewal${NC}"
+                    SKIP_RENEWAL=true
+                    CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+                    MATRIX_CERT_PATH="/etc/letsencrypt/live/${BYTEM_DOMAIN}"
+                else
+                    echo -e "${YELLOW}Certificate expires in $DAYS_REMAINING days (≤30), renewal needed${NC}"
+                fi
+            else
+                echo -e "${YELLOW}Could not read certificate expiry, proceeding with renewal${NC}"
+            fi
         else
-            echo -e "${YELLOW}Certificates need renewal or are corrupted${NC}"
-            # Clean up corrupted certificates
+            echo -e "${YELLOW}Certificate file not found, proceeding with renewal${NC}"
+        fi
+        
+        # Clean up if renewal is needed
+        if [ "$SKIP_RENEWAL" = false ]; then
+            echo -e "${YELLOW}Cleaning up existing certificates for renewal...${NC}"
             rm -rf "./certbot/conf/live/${BYTEM_DOMAIN}"
             rm -rf "./certbot/conf/archive/${BYTEM_DOMAIN}"
             rm -f "./certbot/conf/renewal/${BYTEM_DOMAIN}.conf"
@@ -84,7 +111,7 @@ else
     fi
     
     # Generate new certificates if needed
-    if [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
+    if [ "$SKIP_RENEWAL" = false ] && [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
         echo -e "${YELLOW}Attempting Let's Encrypt certificate for ${BYTEM_DOMAIN} and ${MATRIX_DOMAIN}${NC}"
         
         if docker run --rm \
