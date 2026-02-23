@@ -89,7 +89,23 @@ if [ $# -ge 1 ]; then
 elif [ -n "${DOMAIN_NAME:-}" ]; then
   echo -e "${YELLOW}Using DOMAIN_NAME from environment variable: $DOMAIN_NAME${NC}"
 else
-  prompt_for_value DOMAIN_NAME "a domain name (e.g., example.com or liberbyte.app)"
+  # Auto-detect base domain from hostname
+  DETECTED_DOMAIN=$(hostname -f 2>/dev/null | sed 's/^[^.]*\.//' || hostname -d 2>/dev/null || echo "")
+  
+  # If no domain detected or it's localhost, provide example
+  if [ -z "$DETECTED_DOMAIN" ] || [[ "$DETECTED_DOMAIN" == "localhost" ]] || [[ "$DETECTED_DOMAIN" == *".local"* ]]; then
+    DETECTED_DOMAIN="example.com"
+  fi
+  
+  echo -e "${CYAN}Detected base domain: ${BRIGHT_GREEN}${DETECTED_DOMAIN}${NC}"
+  read -rp "Please enter a base domain name (e.g., example.com or liberbyte.app): " INPUT_DOMAIN
+  
+  if [ -z "$INPUT_DOMAIN" ]; then
+    DOMAIN_NAME="$DETECTED_DOMAIN"
+    echo -e "${GREEN}Using detected base domain: ${DOMAIN_NAME}${NC}"
+  else
+    DOMAIN_NAME="$INPUT_DOMAIN"
+  fi
 fi
 
 # Validate the domain name (format: <domain>.<extension>, no prefixes like www.)
@@ -202,34 +218,6 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
   fi
 else
   echo -e "${RED}----- ERROR: Template file not found: $ENV_TEMPLATE_FILE -----${NC}"
-  exit 1
-fi
-
-header_message "Generating Matrix Synapse Config Files:"
-
-# Generate homeserver.yaml from homeserver-template.yaml
-HOMESERVER_TEMPLATE_FILE="config_templates/synapse_config_templates/homeserver-template.yaml"
-HOMESERVER_OUTPUT_FILE="$GENERATED_DIR/synapse_config/homeserver.yaml"
-HOMESERVER_LOG_FILE="config_templates/synapse_config_templates/log.config"
-
-if [ -f "$HOMESERVER_TEMPLATE_FILE" ]; then
-  sed \
-    -e "s/\${DOMAIN}/$DOMAIN_NAME/g" \
-    -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
-    -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
-    -e "s/\${BOT_USER}/$BOT_USER/g" \
-    -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-    -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
-    -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
-    -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
-    -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
-    -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
-    "$HOMESERVER_TEMPLATE_FILE" > "$HOMESERVER_OUTPUT_FILE"
-  echo -e "${BRIGHT_GREEN}----- HOMESERVER CONFIG FILE GENERATED: $HOMESERVER_OUTPUT_FILE -----${NC}"
-  cp "$HOMESERVER_LOG_FILE" "$GENERATED_DIR/synapse_config/"
-  echo -e "${BRIGHT_GREEN}----- HOMESERVER LOG FILE COPIED: $HOMESERVER_LOG_FILE -----${NC}"
-else
-  echo -e "${RED}----- ERROR: Template file not found: $HOMESERVER_TEMPLATE_FILE -----${NC}"
   exit 1
 fi
 

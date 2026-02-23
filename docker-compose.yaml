@@ -103,6 +103,8 @@ services:
     restart: always
     depends_on:
       - bytem-synapse-db
+    env_file:
+      - .env.bytem
     environment:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
     ports:

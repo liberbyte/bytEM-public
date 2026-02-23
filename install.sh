@@ -21,6 +21,9 @@ set +u
 source .env.bytem
 set -u
 
+# Export key variables that docker-compose config needs
+export NODE_ENV CONFIG_TYPE API_HOST MATRIX_SERVER EXCH_SERVER BYTEM_DOMAIN MATRIX_DOMAIN
+
 # Variables
 CONFIG_DIR="generated_config_files/"
 SYNAPSE_CONTAINER_NAME="bytem-synapse"
@@ -46,28 +49,8 @@ sudo docker-compose stop 2>/dev/null || true
 
 header_message "Pulling latest Docker images"
 
-log "Checking and pulling images only if newer  version available..."
-# Get list of services from docker-compose.yml
-SERVICES=$(sudo docker-compose config --services)
-UPDATED_SERVICES=""
-for service in $SERVICES; do
-    IMAGE=$(sudo docker-compose config | grep -A5 "^  $service:" | grep "image:" | awk '{print $2}' | head -1)
-    if [ -n "$IMAGE" ]; then
-        log "Checking $service ($IMAGE)..."
-        if sudo docker pull "$IMAGE" 2>&1 | grep -q "Status: Image is up to date"; then
-            log "$service: Using cached image"
-        else
-            log "$service: Pulled newer image"
-            UPDATED_SERVICES="$UPDATED_SERVICES $service"
-        fi
-    fi
-done
-
-# Remove containers ONLY for updated services
-for service in $UPDATED_SERVICES; do
-    log "Removing container for updated services (having new images): $service"
-    sudo docker-compose rm -f "$service" 2>/dev/null || true
-done
+log "Pulling images from Docker Hub..."
+sudo docker-compose --env-file .env.bytem pull
 
 header_message "Building and starting the bytem docker stack"
 
@@ -75,7 +58,7 @@ log "Starting Docker containers..."
 MAX_RETRIES=3
 RETRY_DELAY=20
 for i in $(seq 1 $MAX_RETRIES); do
-    if sudo docker-compose up -d --build; then
+    if sudo docker-compose up -d; then
         log "Docker containers started successfully."
         break
     elif [[ $i -eq $MAX_RETRIES ]]; then
