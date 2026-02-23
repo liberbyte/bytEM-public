@@ -5,19 +5,6 @@
 
 set -e
 
-# Load environment variables
-if [ -f .env.bytem ]; then
-    source .env.bytem
-fi
-
-# Configuration
-API_HOST="https://${DOMAIN:-bytem.bm3.liberbyte.app}"
-MATRIX_HOST="https://${MATRIX_DOMAIN:-matrix.bytem.bm3.liberbyte.app}"
-MATRIX_SERVER="${MATRIX_URL:-http://bytem-synapse:8008}"
-TEST_USER="${1:-test}"
-TEST_PASS="${2:-test}"
-BOT_USER_ID="${BOT_USER_ID:-@bot:matrix.bytem.bm3.liberbyte.app}"
-
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -25,6 +12,27 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+
+# Load environment variables
+if [ -f .env.bytem ]; then
+    source .env.bytem
+else
+    echo -e "${RED}Error: .env.bytem not found. Please run env_setup.sh first.${NC}"
+    exit 1
+fi
+
+# Configuration - all from environment, no defaults
+if [ -z "${DOMAIN:-}" ] || [ -z "${MATRIX_DOMAIN:-}" ]; then
+    echo -e "${RED}Error: DOMAIN and MATRIX_DOMAIN must be set in .env.bytem${NC}"
+    exit 1
+fi
+
+API_HOST="https://${DOMAIN}"
+MATRIX_HOST="https://${MATRIX_DOMAIN}"
+MATRIX_SERVER="${MATRIX_URL:-http://bytem-synapse:8008}"
+TEST_USER="${1:-test}"
+TEST_PASS="${2:-test}"
+BOT_USER_ID="${BOT_USER_ID}"
 
 # Test identifiers
 TIMESTAMP=$(date +%s)

@@ -66,6 +66,11 @@ success_message "- Nginx Config: $GENERATED_DIR/nginx_config"
 
 header_message "Please enter the values for variables:"
 
+# Function to generate random 8-character alphanumeric password
+generate_password() {
+  cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1
+}
+
 # Function to prompt for user input
 prompt_for_value() {
   local var_name=$1
@@ -141,16 +146,54 @@ echo -e "${GREEN}  Base domain: $DOMAIN_NAME${NC}"
 echo -e "${GREEN}  BytEM domain: $BYTEM_DOMAIN${NC}"
 echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
 
-[[ -n "${BOT_USER:-}" ]] || prompt_for_value BOT_USER "BOT_USER (Will be converted to lowercase automatically)"
-    BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
-[[ -n "${BOT_PASSWORD:-}" ]] || prompt_for_value BOT_PASSWORD "BOT_PASSWORD (Password for the bot user)"
-[[ -n "${RABBITMQ_USERNAME:-}" ]] || prompt_for_value RABBITMQ_USERNAME "RABBITMQ_USERNAME (User for RabbitMQ)"
-[[ -n "${RABBITMQ_PASSWORD:-}" ]] || prompt_for_value RABBITMQ_PASSWORD "RABBITMQ_PASSWORD (Password for RabbitMQ)"
-[[ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]] || prompt_for_value SYNAPSE_POSTGRES_PASSWORD "SYNAPSE_POSTGRES_PASSWORD (Password for PostgresDB used by synapse container. User will be 'synapse')"
-[[ -n "${MATRIX_SSO_CLIENT_ID:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_ID "MATRIX_SSO_CLIENT_ID (Client ID for Matrix SSO)"
-[[ -n "${MATRIX_SSO_CLIENT_SECRET:-}" ]] || prompt_for_value MATRIX_SSO_CLIENT_SECRET "MATRIX_SSO_CLIENT_SECRET (Client Secret for Matrix SSO)"
-[[ -n "${MARKET_LIST:-}" ]] || prompt_for_value MARKET_LIST "MARKET_LIST (URL for market list, e.g., https://bytem.app/markets/byteM-market-list)"
-[[ -n "${FEDERATION_MARKET_LIST_URL:-}" ]] || prompt_for_value FEDERATION_MARKET_LIST_URL "FEDERATION_MARKET_LIST_URL (URL for federation market list, e.g., https://bytem.app/markets/byteM-market-list)"
+# Auto-generate bot credentials
+if [ -z "${BOT_USER:-}" ]; then
+  BOT_USER="bot"
+  info_message "Auto-generated BOT_USER: $BOT_USER"
+else
+  BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ -z "${BOT_PASSWORD:-}" ]; then
+  BOT_PASSWORD=$(generate_password)
+  info_message "Auto-generated BOT_PASSWORD: $BOT_PASSWORD"
+fi
+# Auto-generate RabbitMQ credentials
+if [ -z "${RABBITMQ_USERNAME:-}" ]; then
+  RABBITMQ_USERNAME="bytem"
+  info_message "Auto-generated RABBITMQ_USERNAME: $RABBITMQ_USERNAME"
+fi
+
+if [ -z "${RABBITMQ_PASSWORD:-}" ]; then
+  RABBITMQ_PASSWORD=$(generate_password)
+  info_message "Auto-generated RABBITMQ_PASSWORD: $RABBITMQ_PASSWORD"
+fi
+# Auto-generate Synapse Postgres password
+if [ -z "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
+  SYNAPSE_POSTGRES_PASSWORD=$(generate_password)
+  info_message "Auto-generated SYNAPSE_POSTGRES_PASSWORD: $SYNAPSE_POSTGRES_PASSWORD"
+fi
+# Auto-generate Matrix SSO credentials
+if [ -z "${MATRIX_SSO_CLIENT_ID:-}" ]; then
+  MATRIX_SSO_CLIENT_ID=$(generate_password)
+  info_message "Auto-generated MATRIX_SSO_CLIENT_ID: $MATRIX_SSO_CLIENT_ID"
+fi
+
+if [ -z "${MATRIX_SSO_CLIENT_SECRET:-}" ]; then
+  MATRIX_SSO_CLIENT_SECRET=$(generate_password)
+  info_message "Auto-generated MATRIX_SSO_CLIENT_SECRET: $MATRIX_SSO_CLIENT_SECRET"
+fi
+
+# Auto-generate market list URLs if not provided
+if [ -z "${MARKET_LIST:-}" ]; then
+  MARKET_LIST="https://bytem.app/markets/byteM-market-list"
+  info_message "Using default MARKET_LIST: $MARKET_LIST"
+fi
+
+if [ -z "${FEDERATION_MARKET_LIST_URL:-}" ]; then
+  FEDERATION_MARKET_LIST_URL="https://bytem.app/markets/byteM-market-list"
+  info_message "Using default FEDERATION_MARKET_LIST_URL: $FEDERATION_MARKET_LIST_URL"
+fi
 
 header_message "Generating .env.bytem file:"
 
