@@ -22,12 +22,12 @@ else
 fi
 
 # Configuration - all from environment, no defaults
-if [ -z "${DOMAIN:-}" ] || [ -z "${MATRIX_DOMAIN:-}" ]; then
-    echo -e "${RED}Error: DOMAIN and MATRIX_DOMAIN must be set in .env.bytem${NC}"
+if [ -z "${BYTEM_DOMAIN:-}" ] || [ -z "${MATRIX_DOMAIN:-}" ]; then
+    echo -e "${RED}Error: BYTEM_DOMAIN and MATRIX_DOMAIN must be set in .env.bytem${NC}"
     exit 1
 fi
 
-API_HOST="https://${DOMAIN}"
+API_HOST="https://${BYTEM_DOMAIN}"
 MATRIX_HOST="https://${MATRIX_DOMAIN}"
 MATRIX_SERVER="${MATRIX_URL:-http://bytem-synapse:8008}"
 TEST_USER="${1:-test}"
