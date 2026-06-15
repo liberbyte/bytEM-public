@@ -68,7 +68,7 @@ header_message "Please enter the values for variables:"
 
 # Function to generate random 8-character alphanumeric password
 generate_password() {
-  cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1
+  tr -dc 'a-zA-Z0-9' </dev/urandom 2>/dev/null | head -c 8 || true
 }
 
 # Function to prompt for user input
@@ -88,7 +88,17 @@ prompt_for_value() {
   done
 }
 
-# Get or prompt for required values
+# Non-interactive mode: all required values must be provided as env vars
+NON_INTERACTIVE=false
+if [ -n "${DOMAIN_NAME:-}" ] && [ -n "${SUBDOMAIN_PREFIX:-}" ] && [ -n "${BOT_PASSWORD:-}" ] && [ -n "${RABBITMQ_PASSWORD:-}" ] && [ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
+  NON_INTERACTIVE=true
+  info_message "Non-interactive mode: using all values from environment variables"
+elif [ "${1:-}" = "--non-interactive" ] || [ "${1:-}" = "-n" ]; then
+  echo -e "${RED}ERROR: Non-interactive mode requires DOMAIN_NAME, SUBDOMAIN_PREFIX, BOT_PASSWORD, RABBITMQ_PASSWORD, and SYNAPSE_POSTGRES_PASSWORD environment variables.${NC}"
+  exit 1
+fi
+
+# If first arg is domain (backward compat), use it
 if [ $# -ge 1 ]; then
   DOMAIN_NAME=$1
 elif [ -n "${DOMAIN_NAME:-}" ]; then

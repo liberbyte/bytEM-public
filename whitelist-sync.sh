@@ -53,9 +53,26 @@ echo "✅ Configuration files found"
 echo "✅ Using nginx config: $NGINX_CONFIG_PATH"
 
 # --- Fetch domains ---
-DOMAINS=$(curl -fsS "$MARKET_LIST" | jq -r '.[]')
-echo "✅ Registry domains fetched successfully"
+RESPONSE=$(curl -sS -w "\n%{http_code}" "$MARKET_LIST" 2>/dev/null || echo "")
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
 
+if [[ "$HTTP_CODE" == "404" ]] || [[ -z "$BODY" ]]; then
+    echo "⚠️  Market list URL returned $HTTP_CODE or empty, skipping whitelist update"
+    echo "   Your instance will use default federation (matrix.org + self)"
+    SKIP_WHITELIST=true
+else
+    DOMAINS=$(echo "$BODY" | jq -r '.[]' 2>/dev/null || echo "")
+    if [[ -z "$DOMAINS" ]]; then
+        echo "⚠️  Could not parse market list, skipping whitelist update"
+        SKIP_WHITELIST=true
+    else
+        echo "✅ Registry domains fetched successfully"
+        SKIP_WHITELIST=false
+    fi
+fi
+
+if [[ "$SKIP_WHITELIST" != "true" ]]; then
 # --- Filter domains to match current server's domain ---
 CONFIG_FILENAME=$(basename "$NGINX_CONFIG_PATH")
 FULL_DOMAIN=$(echo "$CONFIG_FILENAME" | sed 's/^bytem\.//' | sed 's/\.conf$//')
@@ -122,6 +139,7 @@ sed -i "/location \/solr\/ {/,/proxy_pass/{/proxy_pass/i\\        # Block all ot
 }" "$NGINX_CONFIG_PATH"
 
 echo "✅ Solr access restricted: Federation servers allowed, public access blocked"
+fi
 
 # --- Check if containers are running before reloading ---
 check_container_running() {

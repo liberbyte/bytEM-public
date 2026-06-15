@@ -44,13 +44,34 @@ sudo chown -R 991:991 "${CONFIG_DIR}"
 
 header_message "Ensuring clean Docker environment"
 
-log "Stopping any existing containers..."
-sudo docker-compose stop 2>/dev/null || true
+log "Stopping and removing all containers and networks..."
+sudo docker-compose down --remove-orphans 2>/dev/null || true
+
+header_message "Removing Docker images"
+
+log "Removing all Docker images..."
+sudo docker image prune -a -f
 
 header_message "Pulling latest Docker images"
 
 log "Pulling images from Docker Hub..."
 sudo docker-compose --env-file .env.bytem pull
+
+header_message "Ensuring nginx template is available"
+
+log "Checking for default.conf.template in nginx config directory..."
+NGINX_CONFIG_DIR="generated_config_files/nginx_config"
+TEMPLATE_DEST="${NGINX_CONFIG_DIR}/default.conf.template"
+
+if [ ! -f "$TEMPLATE_DEST" ]; then
+  log "Extracting default.conf.template from bytem-app image..."
+  docker create --name tmp-nginx-tpl liberbyteadmin/bytem:app >/dev/null 2>&1 || true
+  docker cp tmp-nginx-tpl:/etc/nginx/conf.d/default.conf.template "$TEMPLATE_DEST"
+  docker rm tmp-nginx-tpl >/dev/null 2>&1 || true
+  log "Template saved to $TEMPLATE_DEST"
+else
+  log "Template already exists at $TEMPLATE_DEST"
+fi
 
 header_message "Building and starting the bytem docker stack"
 
