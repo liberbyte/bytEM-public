@@ -335,23 +335,8 @@ header_message "Setting up SSL configuration"
 mkdir -p "certbot/conf/live/${BYTEM_DOMAIN}"
 mkdir -p "certbot/www"
 
-# Always create proper self-signed certificates for development
-echo -e "${YELLOW}Creating self-signed SSL certificates for development...${NC}"
-
-# Generate self-signed certificate
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout "certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" \
-    -out "certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" \
-    -subj "/C=US/ST=State/L=City/O=BytEM/CN=${BYTEM_DOMAIN}" 2>/dev/null
-
-# Also create for matrix domain
-mkdir -p "certbot/conf/live/${MATRIX_DOMAIN}"
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout "certbot/conf/live/${MATRIX_DOMAIN}/privkey.pem" \
-    -out "certbot/conf/live/${MATRIX_DOMAIN}/fullchain.pem" \
-    -subj "/C=US/ST=State/L=City/O=BytEM/CN=${MATRIX_DOMAIN}" 2>/dev/null
-
-echo -e "${GREEN}Created self-signed SSL certificates for development${NC}"
+echo -e "${GREEN}SSL directory structure created${NC}"
+echo -e "${YELLOW}Note: Real certificates will be obtained by certbot.sh after containers are running${NC}"
 
 header_message "Setting up Solr directories"
 
