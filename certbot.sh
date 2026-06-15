@@ -172,6 +172,15 @@ echo -e "${YELLOW}Using certificate paths:${NC}"
 echo -e "${YELLOW}BYTEM: ${CERT_PATH}${NC}"
 echo -e "${YELLOW}Matrix: ${MATRIX_CERT_PATH}${NC}"
 
+# Ensure matrix cert path exists (single multi-domain cert covers both)
+MATRIX_CERT_DIR="./certbot/conf/live/${MATRIX_DOMAIN}"
+BYTEM_CERT_DIR="./certbot/conf/live/${BYTEM_DOMAIN}"
+if [ ! -d "$MATRIX_CERT_DIR" ] && [ -d "$BYTEM_CERT_DIR" ]; then
+    echo -e "${YELLOW}Creating symlink for matrix domain certificate...${NC}"
+    sudo ln -s "${BYTEM_CERT_DIR}" "${MATRIX_CERT_DIR}"
+    echo -e "${GREEN}Symlink created: ${MATRIX_CERT_DIR} -> ${BYTEM_CERT_DIR}${NC}"
+fi
+
 # Generate nginx configs with dynamic certificate path and fix HTTP/2 syntax
 if [ -f "config_templates/nginx_config_templates/bytem.template" ]; then
     sudo sed -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
