@@ -6,7 +6,8 @@ services:
     image: liberbyteadmin/bytem:app
     container_name: bytem-app
     hostname: bytem-app
-    restart: "always"
+    restart: always
+    mem_limit: 512m
     env_file:
       - .env.bytem
     environment:
@@ -20,11 +21,17 @@ services:
     ports:
       - 80:80
       - 443:443
+      - 8448:8448
     volumes:
       - ./generated_config_files/nginx_config:/etc/nginx/conf.d
       - ./generated_config_files/nginx_config/config.js:/usr/share/nginx/html/config.js
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - bytem-network
 
@@ -34,15 +41,33 @@ services:
     hostname: bytem-be
     restart: always
     depends_on:
-      - bytem-synapse
+      bytem-rabbitmq:
+        condition: service_started
+      bytem-synapse-db:
+        condition: service_healthy
+      bytem-synapse:
+        condition: service_healthy
     env_file:
       - .env.bytem
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
+      - SOLR_URL=http://bytem-solr:8983
+      - API_HOST_INTERNAL=http://bytem-be:3000
     ports:
       - 9999:9999
       - 3000:3000
     volumes:
       - ./.env.bytem:/app/.env.bytem
       - ./certbot/conf:/etc/letsencrypt
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - bytem-network
 
@@ -52,14 +77,27 @@ services:
     hostname: bytem-bot
     restart: always
     depends_on:
-      - bytem-synapse
+      bytem-rabbitmq:
+        condition: service_started
+      bytem-synapse-db:
+        condition: service_healthy
+      bytem-synapse:
+        condition: service_healthy
     env_file:
       - .env.bytem
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
+      - SOLR_URL=http://bytem-solr:8983
     ports:
       - 4000:4000
     volumes:
-      - ./solr/data:/solr/data
       - ./.env.bytem:/app/.env.bytem
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - bytem-network
 
@@ -76,23 +114,36 @@ services:
     volumes:
       - bytem-rabbitmq-data:/var/lib/rabbitmq/
       - bytem-rabbitmq-log:/var/log/rabbitmq
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - bytem-network
 
   bytem-solr:
-    image: solr:9.5.0
+    image: liberbyteadmin/bytem:solr
     container_name: bytem-solr
     hostname: bytem-solr
     restart: always
     user: root
     depends_on:
       - bytem-be
+    environment:
+      - SOLR_LOG_LEVEL=WARN
+      - SOLR_OPTS=-Dlog4j2.formatMsgNoLookups=true
     ports:
-     - "8983:8983"
+      - "8983:8983"
     volumes:
-      - ./solr:/var/solr
+      - bytem-solr-data:/var/solr
     command:
       - -force
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - bytem-network
 
@@ -102,7 +153,8 @@ services:
     hostname: bytem-synapse
     restart: always
     depends_on:
-      - bytem-synapse-db
+      bytem-synapse-db:
+        condition: service_healthy
     env_file:
       - .env.bytem
     environment:
@@ -110,12 +162,25 @@ services:
     ports:
       - 8008:8008
       - 8009:8009
-      - 8448:8448
     volumes:
       - ./generated_config_files/synapse_config:/data
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - bytem-network
-  
+
   bytem-synapse-db:
     image: docker.io/postgres:14-alpine
     container_name: bytem-synapse-db
@@ -129,6 +194,16 @@ services:
       - 5432:5432
     volumes:
       - bytem-synapse-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
     networks:
       - bytem-network
 
@@ -155,12 +230,21 @@ services:
     env_file:
       - .env.bytem
     environment:
-      BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
-      MATRIX_DOMAIN: ${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
+      - NODE_ENV=production
+      - BYTEM_DOMAIN=${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
+      - MATRIX_DOMAIN=${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
+      - NEXT_PUBLIC_API_BASE_URL=${API_HOST}
+      - PWA_URL=${API_HOST}/
+      - PWA_BYTEM_DEMROOM_FRAME_BACKLINK=${API_HOST}/
+      - PWA_DEMAND_BYTEM_GUEST=${API_HOST}/
+      - PWA_MATRIX_BYTEM_URL=${MATRIX_SERVER}/
     ports:
       - 8002:3002
-    volumes:
-      - ./generated_config_files/nginx_config/pwa-config.js:/usr/share/nginx/html/config.js
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - bytem-network
 
@@ -176,3 +260,5 @@ volumes:
     name: bytem-rabbitmq-log
   bytem-synapse-db-data:
     name: bytem-synapse-db-data
+  bytem-solr-data:
+    name: bytem-solr-data

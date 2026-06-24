@@ -110,8 +110,48 @@ else
         fi
     fi
     
-    # Generate new certificates if needed
+    # Bootstrap: nginx needs a certificate file to start, but Let's Encrypt's HTTP-01
+    # challenge needs nginx already running on port 80 to serve it. Generate a short-lived
+    # self-signed certificate in a SEPARATE directory (not the "live" path certbot manages,
+    # since certbot refuses to issue into a "live" dir that already contains files) so nginx
+    # can come up before we request the real one.
     if [ "$SKIP_RENEWAL" = false ] && [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
+        echo -e "${YELLOW}Bootstrapping temporary self-signed certificate so nginx can start...${NC}"
+        mkdir -p "./certbot/conf/bootstrap/${BYTEM_DOMAIN}"
+        mkdir -p "./certbot/conf/bootstrap/${MATRIX_DOMAIN}"
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout "./certbot/conf/bootstrap/${BYTEM_DOMAIN}/privkey.pem" \
+            -out "./certbot/conf/bootstrap/${BYTEM_DOMAIN}/fullchain.pem" \
+            -subj "/C=US/ST=State/L=City/O=BytEM/CN=${BYTEM_DOMAIN}" 2>/dev/null
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout "./certbot/conf/bootstrap/${MATRIX_DOMAIN}/privkey.pem" \
+            -out "./certbot/conf/bootstrap/${MATRIX_DOMAIN}/fullchain.pem" \
+            -subj "/C=US/ST=State/L=City/O=BytEM/CN=${MATRIX_DOMAIN}" 2>/dev/null
+
+        if [ -f "config_templates/nginx_config_templates/bytem.template" ] && [ -f "config_templates/nginx_config_templates/matrix.bytem.template" ]; then
+            sudo sed -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
+                -e "s|\${CERT_PATH}|/etc/letsencrypt/bootstrap/${BYTEM_DOMAIN}|g" \
+                -e "s/listen 443 ssl http2;/listen 443 ssl;/g" \
+                -e "s/listen \[::\]:443 ssl http2;/listen [::]:443 ssl;/g" \
+                config_templates/nginx_config_templates/bytem.template > \
+                generated_config_files/nginx_config/${BYTEM_DOMAIN}.conf
+            sudo sed -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
+                -e "s|\${CERT_PATH}|/etc/letsencrypt/bootstrap/${MATRIX_DOMAIN}|g" \
+                -e "s/listen 443 ssl http2;/listen 443 ssl;/g" \
+                -e "s/listen \[::\]:443 ssl http2;/listen [::]:443 ssl;/g" \
+                config_templates/nginx_config_templates/matrix.bytem.template > \
+                generated_config_files/nginx_config/matrix.${BYTEM_DOMAIN}.conf
+        fi
+
+        if sudo docker ps -a --format '{{.Names}}' | grep -q "^bytem-app$"; then
+            sudo docker restart bytem-app >/dev/null 2>&1
+            echo -e "${YELLOW}Waiting for nginx to come up with the bootstrap certificate...${NC}"
+            sleep 8
+        fi
+    fi
+
+    # Generate new certificates if needed
+    if [ "$SKIP_RENEWAL" = false ]; then
         echo -e "${YELLOW}Attempting Let's Encrypt certificate for ${BYTEM_DOMAIN} and ${MATRIX_DOMAIN}${NC}"
         
         if docker run --rm \
@@ -172,13 +212,20 @@ echo -e "${YELLOW}Using certificate paths:${NC}"
 echo -e "${YELLOW}BYTEM: ${CERT_PATH}${NC}"
 echo -e "${YELLOW}Matrix: ${MATRIX_CERT_PATH}${NC}"
 
-# Ensure matrix cert path exists (single multi-domain cert covers both)
+# Ensure matrix cert path resolves to real cert files (single multi-domain cert covers
+# both domains, but the bytem-app image's own default.conf hardcodes the matrix-domain-named
+# path — so that path needs to be a symlink to where the real cert actually lives, not just
+# an empty directory that happens to exist from an earlier unconditional mkdir).
 MATRIX_CERT_DIR="./certbot/conf/live/${MATRIX_DOMAIN}"
 BYTEM_CERT_DIR="./certbot/conf/live/${BYTEM_DOMAIN}"
-if [ ! -d "$MATRIX_CERT_DIR" ] && [ -d "$BYTEM_CERT_DIR" ]; then
-    echo -e "${YELLOW}Creating symlink for matrix domain certificate...${NC}"
-    sudo ln -s "${BYTEM_CERT_DIR}" "${MATRIX_CERT_DIR}"
-    echo -e "${GREEN}Symlink created: ${MATRIX_CERT_DIR} -> ${BYTEM_CERT_DIR}${NC}"
+if [ ! -f "${MATRIX_CERT_DIR}/fullchain.pem" ] && [ -f "${BYTEM_CERT_DIR}/fullchain.pem" ] && [ "$MATRIX_CERT_DIR" != "$BYTEM_CERT_DIR" ]; then
+    echo -e "${YELLOW}Linking matrix domain certificate path to the multi-domain certificate...${NC}"
+    sudo rm -rf "${MATRIX_CERT_DIR}"
+    # Relative symlink (just the sibling directory name) so it resolves correctly both on
+    # the host and inside the container, where this directory is bind-mounted at a different
+    # absolute path (/etc/letsencrypt) than it has on the host.
+    sudo ln -s "${BYTEM_DOMAIN}" "${MATRIX_CERT_DIR}"
+    echo -e "${GREEN}Symlink created: ${MATRIX_CERT_DIR} -> ${BYTEM_DOMAIN}${NC}"
 fi
 
 # Generate nginx configs with dynamic certificate path and fix HTTP/2 syntax
@@ -235,12 +282,20 @@ if sudo docker ps | grep -q "bytem-app"; then
     fi
 fi
 
-# Fix frontend hardcoded domains after SSL setup
+# Fix frontend hardcoded domains after SSL setup. By this point bytem-app is guaranteed to
+# be running (we just verified nginx above), unlike the equivalent step in install.sh which
+# runs before certificates exist and silently skips on a fresh install. Match ANY old bytem.*
+# domain baked into the bundle at build time, not just the bm-N.liberbyte.app naming pattern.
 echo -e "${YELLOW}Fixing frontend configuration...${NC}"
 if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
     echo -e "${YELLOW}Updating frontend domains...${NC}"
     sudo docker exec bytem-app cp /usr/share/nginx/html/umi.js /usr/share/nginx/html/umi.js.backup 2>/dev/null || true
-    sudo docker exec bytem-app sed -i "s/bytem\.bm[0-9]*\.liberbyte\.app/${BYTEM_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/\"bytem\.[^\"]*\"/\"${BYTEM_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/'bytem\.[^']*'/'${BYTEM_DOMAIN}'/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/\"matrix\.bytem\.[^\"]*\"/\"${MATRIX_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/'matrix\.bytem\.[^']*'/'${MATRIX_DOMAIN}'/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s|https://bytem\.[^/\"']*|https://${BYTEM_DOMAIN}|g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s|https://matrix\.bytem\.[^/\"']*|https://${MATRIX_DOMAIN}|g" /usr/share/nginx/html/umi.js
     echo -e "${GREEN}Frontend domains updated successfully${NC}"
 fi
 

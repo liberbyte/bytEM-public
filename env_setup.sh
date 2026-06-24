@@ -71,6 +71,15 @@ generate_password() {
   tr -dc 'a-zA-Z0-9' </dev/urandom 2>/dev/null | head -c 8 || true
 }
 
+# Function to generate a 64-character hex secret (for Synapse macaroon/form secrets)
+generate_secret() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32
+  else
+    tr -dc 'a-f0-9' </dev/urandom 2>/dev/null | head -c 64 || true
+  fi
+}
+
 # Function to prompt for user input
 prompt_for_value() {
   local var_name=$1
@@ -98,8 +107,8 @@ elif [ "${1:-}" = "--non-interactive" ] || [ "${1:-}" = "-n" ]; then
   exit 1
 fi
 
-# If first arg is domain (backward compat), use it
-if [ $# -ge 1 ]; then
+# If first arg is domain (backward compat), use it — but not when it's a flag
+if [ $# -ge 1 ] && [ "${1:-}" != "--non-interactive" ] && [ "${1:-}" != "-n" ]; then
   DOMAIN_NAME=$1
 elif [ -n "${DOMAIN_NAME:-}" ]; then
   echo -e "${YELLOW}Using DOMAIN_NAME from environment variable: $DOMAIN_NAME${NC}"
@@ -193,6 +202,16 @@ if [ -z "${MATRIX_SSO_CLIENT_SECRET:-}" ]; then
   MATRIX_SSO_CLIENT_SECRET=$(generate_password)
   info_message "Auto-generated MATRIX_SSO_CLIENT_SECRET: $MATRIX_SSO_CLIENT_SECRET"
 fi
+# Auto-generate Synapse security secrets
+if [ -z "${SYNAPSE_MACAROON_SECRET_KEY:-}" ]; then
+  SYNAPSE_MACAROON_SECRET_KEY=$(generate_secret)
+  info_message "Auto-generated SYNAPSE_MACAROON_SECRET_KEY"
+fi
+
+if [ -z "${SYNAPSE_FORM_SECRET:-}" ]; then
+  SYNAPSE_FORM_SECRET=$(generate_secret)
+  info_message "Auto-generated SYNAPSE_FORM_SECRET"
+fi
 
 # Auto-generate market list URLs if not provided
 if [ -z "${MARKET_LIST:-}" ]; then
@@ -238,6 +257,8 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
             -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
             -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
+            -e "s/\${SYNAPSE_MACAROON_SECRET_KEY}/$SYNAPSE_MACAROON_SECRET_KEY/g" \
+            -e "s/\${SYNAPSE_FORM_SECRET}/$SYNAPSE_FORM_SECRET/g" \
             "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
           echo -e "${BRIGHT_GREEN}----- NEW ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
           break
@@ -266,6 +287,8 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
       -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
       -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
+      -e "s/\${SYNAPSE_MACAROON_SECRET_KEY}/$SYNAPSE_MACAROON_SECRET_KEY/g" \
+      -e "s/\${SYNAPSE_FORM_SECRET}/$SYNAPSE_FORM_SECRET/g" \
       "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
     echo -e "${BRIGHT_GREEN}----- ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
   fi
@@ -324,6 +347,15 @@ if [ -f "$CONFIG_JS_TEMPLATE" ]; then
     -e "s/DOMAIN_PLACEHOLDER/$BYTEM_DOMAIN/g" \
     "$CONFIG_JS_TEMPLATE" > "$CONFIG_JS_OUTPUT"
   echo -e "${GREEN}Generated frontend config: $CONFIG_JS_OUTPUT${NC}"
+
+  # Generate PWA config.js (same content — Docker creates it as a directory if missing)
+  PWA_CONFIG_JS_OUTPUT="$GENERATED_DIR/nginx_config/pwa-config.js"
+  # Remove directory if Docker previously created it incorrectly
+  [ -d "$PWA_CONFIG_JS_OUTPUT" ] && rm -rf "$PWA_CONFIG_JS_OUTPUT"
+  sed \
+    -e "s/DOMAIN_PLACEHOLDER/$BYTEM_DOMAIN/g" \
+    "$CONFIG_JS_TEMPLATE" > "$PWA_CONFIG_JS_OUTPUT"
+  echo -e "${GREEN}Generated PWA config: $PWA_CONFIG_JS_OUTPUT${NC}"
 else
   echo -e "${RED}ERROR: Template file not found: $CONFIG_JS_TEMPLATE${NC}"
   exit 1
@@ -337,12 +369,6 @@ mkdir -p "certbot/www"
 
 echo -e "${GREEN}SSL directory structure created${NC}"
 echo -e "${YELLOW}Note: Real certificates will be obtained by certbot.sh after containers are running${NC}"
-
-header_message "Setting up Solr directories"
-
-# Create Solr directories
-mkdir -p "solr/data"
-mkdir -p "solr/logs"
 
 header_message "----- ALL SET..! -----"
 

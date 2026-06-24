@@ -24,6 +24,8 @@ Scan this QR code to access the bytEM repository:
 
 Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM-public)
 
+> 📖 New to bytEM terminology? See the [Glossary](GLOSSARY.md) for a dictionary of concepts (DEID, Class, Exchange, Federation, etc.) — also see the [User Guide](USER_GUIDE.md) for how to actually use the app.
+
 ## Quick Start
 
 1. **Install Docker & Docker Compose** - Container runtime for bytEM services
@@ -103,6 +105,10 @@ git clone https://github.com/liberbyte/bytEM-public.git
 cd bytEM-public
 ```
 
+> If `docker-compose` isn't recognized as a command, run: `sudo ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose`
+>
+> If `git clone` fails with a permission error, use `sudo git clone ...` instead.
+
 
 
 
@@ -135,13 +141,7 @@ when prompted enter the following:
 ![alt text](documentation_screenshots/image_6.png)
 
 
-<!-- ### 2. login to docker hub
-
-
-![alt text](documentation_screenshots/image_2.png)
- -->
-
-### 3. Run installer: install.sh -
+### 2. Run installer: install.sh -
 
 
 ```bash
@@ -153,12 +153,15 @@ This script is the second step to run when setting up the bytEM application. The
 - Start the docker containers by executing docker compose commands.
 - Register the first matrix synapse admin user by executing 'register_new_matrix_user' command inside 'bytem-synapse container'
 - Restart the container bytem-be and bytem-bot for the changes to take effect
+- Configures internal networking so the app can reach the homeserver correctly
 
 <!-- ![alt text](documentation_screenshots/image_3.png) -->
 
 ![alt text](documentation_screenshots/image_7.png)
 
-### 4. check the docker containers
+> If login ever shows a "Cannot reach homeserver" error after restarting or upgrading the containers, just re-run `sudo ./install.sh` to restore the networking configuration.
+
+### 3. check the docker containers
 
 ```bash
 sudo docker ps
@@ -171,7 +174,7 @@ we see all docker containers are up and running successfully
 
 ![alt text](documentation_screenshots/image_8.png)
 
-### 5. Run SSL Setup: certbot.sh -
+### 4. Run SSL Setup: certbot.sh -
 
 
 ```bash
@@ -185,10 +188,12 @@ This script is the third step to run when setting up the bytEM application. The 
 - Override the ratelimit of matrix synapse server.
 - Restarts necessary containers to apply the changes.
 
+> You'll be prompted for an email address (used only for SSL certificate renewal notices from Let's Encrypt). Any valid email works.
+
 ![alt text](documentation_screenshots/image_9.png)
 
 
-### 6. Run Whitelist Sync
+### 5. Run Whitelist Sync
 
 
 Whitelisting is a security mechanism that controls which bytEM instances (servers) can communicate with your instance. Think of it as an approved partners list - only bytEM servers on this list can exchange data with your instance.
@@ -244,6 +249,7 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 
 - All services are managed using Docker Compose (docker-compose.yaml).
 - This file defines the containers and how they interact.
+- The PWA (`bytem-pwa`) is configured automatically through environment variables — no extra setup needed.
 
 ### Services (Containers) and Ports Binding:
 
@@ -263,7 +269,7 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 <td>1.</td>
 <td>bytem-app</td>
 <td>React Front-end</td>
-<td>80:80<br>443:443</td>
+<td>80:80<br>443:443<br>8448:8448 (Matrix federation, TLS-terminated by nginx)</td>
 </tr>
 <tr>
 <td>2.</td>
@@ -293,7 +299,7 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 <td>7.</td>
 <td>bytem-synapse</td>
 <td>Matrix Synapse server</td>
-<td>8008:8008 (Default)<br>8009:8009 (sliding sync)<br>8448:8448 (federation)</td>
+<td>8008:8008 (Default)<br>8009:8009 (sliding sync)</td>
 </tr>
 <tr>
 <td>8.</td>
@@ -312,10 +318,11 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 - bytem-rabbitmq-data - Volume used by container 'bytem-rabbitmq' to persist the data of RabbitMQ server.
 - Bytem-rabbitmq-log - Volume used by container 'bytem-rabbitmq' to persist the logs of RabbitMQ server
 - Bytem-synapse-db-data - Volume used by container 'bytem-synapse-db' to persist the data of postgresDB used by Matrix synapse server.
+- bytem-solr-data - Volume used by container 'bytem-solr' to persist Solr's core data and configsets.
 
 Apart from above named volumes, We have some directories mounted from host machine to the containers. Details of them are as below -
 
-- **solr/ -** This directory in the root of the project is created by container bytem-solr and then is mounted inside the container bytem-bot to be used to share the data of solr cores between both the containers.
+- **bytem-solr-data (named volume) -** Stores Solr's core data and configsets, used by the bytem-solr container. bytem-bot talks to Solr over HTTP (`SOLR_URL`), not a shared directory.
 - **generated_config_files/ -** This directory is created in the root of the project by (env_setup.sh) to generate .env.bytem file and synapse and nginx config files. This directory is mounted inside the containers bytem-app, and bytem-synapse so that the generated nginx config files and synapse homeserver.yaml are available for both the containers to use.
 - **certbot/ -**  This directory will include generated SSL Certificates. This directory is mounted inside bytem-app container.
 - **.env.bytem -** This is env variables file used to determine the config options needed for the bytEM to function. This file is generated in the root of the project when we run the first bash script (env_setup.sh). This file is mounted inside the containers bytem-be and bytem-bot.
@@ -326,7 +333,7 @@ Apart from above named volumes, We have some directories mounted from host machi
 This section helps you test your Matrix installation and manage users on your bytEM server.
 
 
-## 7. Create Your First bytEM User (Required)
+## 6. Create Your First bytEM User (Required)
 
 Creating a bytEM user (Matrix user) is required to start using bytEM and to test your installation.
 
@@ -350,9 +357,11 @@ sudo docker exec -it bytem-synapse register_new_matrix_user \
 ```
 - This creates an admin user `@test:your-domain` with password `test`.
 
+> **Note:** If the command says `User ID already taken`, that's not an error — the user already exists from a previous run of the script. Just log in with the existing credentials, or pick a different username.
+
 ---
 
-## 8. Test Your Installation (Required)
+## 7. Test Your Installation (Required)
 
 After installation, perform these checks to confirm everything is working:
 
@@ -379,6 +388,7 @@ After installation, perform these checks to confirm everything is working:
   ```sh
   sudo docker logs bytem-synapse --tail 50
   ```
+- If the Homeserver field on the login page shows an unexpected domain, or login fails right after a fresh install, do a hard refresh in your browser (Ctrl+Shift+R) to clear the cached page and try again.
 
 ---
 
