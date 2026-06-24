@@ -230,18 +230,15 @@ fi
 
 # Create welcome page for matrix subdomain
 log "Creating welcome page for matrix subdomain..."
-sudo docker exec bytem-app bash -c 'cat > /usr/share/nginx/html/matrix-welcome.html << "EOF"
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Welcome to Matrix Server</title>
-</head>
-<body>
-    <h1>Welcome to Nginx!</h1>
-    <p>Matrix server is running successfully.</p>
-</body>
-</html>
-EOF'
+sudo docker exec bytem-app sh -c 'printf "<!DOCTYPE html>\n<html>\n<head><title>Welcome to Matrix Server</title></head>\n<body><h1>Welcome to Nginx!</h1><p>Matrix server is running successfully.</p></body>\n</html>" > /usr/share/nginx/html/matrix-welcome.html' || true
 log "Welcome page created successfully."
+
+header_message "Fixing Docker internal hostname resolution"
+
+log "Adding internal hostname entries to bytem-be and bytem-bot..."
+BYTEM_APP_IP=$(sudo docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bytem-app)
+sudo docker exec bytem-be sh -c "echo '$BYTEM_APP_IP ${BYTEM_DOMAIN} ${MATRIX_DOMAIN}' >> /etc/hosts"
+sudo docker exec bytem-bot sh -c "echo '$BYTEM_APP_IP ${BYTEM_DOMAIN} ${MATRIX_DOMAIN}' >> /etc/hosts"
+log "Hostname resolution fixed."
 
 header_message "Script completed successfully."
