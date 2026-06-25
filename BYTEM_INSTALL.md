@@ -1,0 +1,436 @@
+# bytEM Install Guide
+
+## Quick Start
+
+1. **Install Docker & Docker Compose** - Container runtime for bytEM services
+2. **Clone this repository** - Get the installation scripts and templates
+3. **Run environment setup:** `sudo ./env_setup.sh` - Generate custom configuration
+4. **Run installer:** `sudo ./install.sh` - Deploy all services
+5. **Run SSL setup:** `sudo ./certbot.sh` - Enable secure HTTPS connections
+6. **Run whitelist sync:** `sudo ./whitelist-sync.sh` - Join the trusted bytEM network
+7. **Create your first bytEM (Matrix) user** - Set up admin account
+8. **Test your installation** - Verify all components work correctly
+---
+
+## Prerequisites
+
+- Virtual Machine: recommended minimum spec, example: 2 Cores, 8GB RAM, 80 GB disk space
+- Ubuntu 24.04 server
+- Domain/subdomain for your installation (bytEM requires its own IP address / domain)
+- Customize credentials for bot user, RabbitMQ, Synapse, etc.
+
+---
+
+## Step-by-Step Installation
+- We have written 4 bash scripts (env_setup.sh, install.sh, certbot.sh and whitelist-sync) to automate the process of setting up and installing the application bytEM.
+- The main goal for these scripts is to generate the config files from the template files, run the containers and required first run commands, generate SSL certificates, and configure federation/IP whitelisting.
+- All these scripts perform a certain set of tasks. Details of the tasks performed are as below -
+
+<!-- ### ssh into the VM server -->
+
+
+
+
+
+### Install Docker and Docker Compose
+
+
+#### Optional: Move Docker Data to Dedicated Storage
+
+If your server has a dedicated storage volume (e.g., `/xxx-liberbyte`), you can move Docker's data directory to prevent filling up the root filesystem. **Do this BEFORE running `env_setup.sh` or `install.sh`.**
+
+```sh
+# Stop Docker service
+sudo systemctl stop docker
+
+# Create directory on dedicated storage
+sudo mkdir -p /xxx-liberbyte/bytem/docker
+
+# Move Docker data to dedicated storage
+sudo mv /var/lib/docker /xxx-liberbyte/bytem/docker
+
+# Create symlink
+sudo ln -s /xxx-liberbyte/bytem/docker /var/lib/docker
+
+# Start Docker service
+sudo systemctl start docker
+
+# Verify Docker is using the new location
+sudo docker info | grep "Docker Root Dir"
+# Should show: Docker Root Dir: /xxx-liberbyte/bytem/docker
+
+# Navigate to dedicated storage and clone bytEM repository
+cd /xxx-liberbyte
+```
+
+**Benefits:**
+- Prevents root filesystem from filling up
+- All Docker data (images, containers, volumes) stored on large dedicated storage
+- Installation proceeds normally - no changes to `env_setup.sh` or `install.sh` needed
+
+<!-- ![alt text](documentation_screenshots/image_5.png) -->
+
+
+```sh
+sudo apt update
+sudo apt install docker docker-compose
+
+git clone https://github.com/liberbyte/bytEM-public.git
+cd bytEM-public
+```
+
+> If `docker-compose` isn't recognized as a command, run: `sudo ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose`
+>
+> If `git clone` fails with a permission error, use `sudo git clone ...` instead.
+
+
+
+
+### 1. env_setup.sh -
+
+**Why needed:** Generates custom configuration files tailored to your domain and credentials, ensuring secure inter-service communication. The script will prompt you for your domain details and credentials.
+
+This script is the first one to run when setting up the bytEM application.  The main goal of this script is to generate the env variables and other config files to be used by the application as below -
+
+- Generation of directory named 'generated_config_files'
+- Generation of subdirectories
+_'generated_config_files/nginx_config' and_
+_'generated_config_files/synapse_config'_
+- Generation of config files from template files in the folder 'config_templates' and putting them in respective sub-directories.
+- Generation of '.env.bytem' file from the template file '.env.template' .
+- If there is already a file present named '.env.bytem' (from old installation), the old .env.bytem will be backed up by asking the user if he wants to back up the old file or not.
+
+run this script first by
+```bash
+ sudo ./env_setup.sh
+```
+when prompted enter the following:
+
+- Enter your subdomain (e.g., [liberbyte.app])
+- Enter your prefix (e.g., [bm4])
+- Custom credentials for bot user, rabbitmq, synapse, etc ...
+
+<!-- ![alt text](documentation_screenshots/image_1.png) -->
+
+![alt text](documentation_screenshots/image_6.png)
+
+
+### 2. Run installer: install.sh -
+
+
+```bash
+ sudo ./install.sh
+```
+This script is the second step to run when setting up the bytEM application. The main goal of this script is to pull all images and run all the containers in the bytEM stack in docker-compose.yaml, and register first admin user for matrix synapse as below -
+
+- Changing ownership permission of directory 'generated_config_files' to 991 so that bytem-synapse container can use the homeserver.yaml and log.config file.
+- Start the docker containers by executing docker compose commands.
+- Register the first matrix synapse admin user by executing 'register_new_matrix_user' command inside 'bytem-synapse container'
+- Restart the container bytem-be and bytem-bot for the changes to take effect
+- Configures internal networking so the app can reach the homeserver correctly
+
+<!-- ![alt text](documentation_screenshots/image_3.png) -->
+
+![alt text](documentation_screenshots/image_7.png)
+
+> If login ever shows a "Cannot reach homeserver" error after restarting or upgrading the containers, just re-run `sudo ./install.sh` to restore the networking configuration.
+
+### 3. check the docker containers
+
+```bash
+sudo docker ps
+```
+
+
+we see all docker containers are up and running successfully
+
+<!-- ![alt text](documentation_screenshots/image_4.png) -->
+
+![alt text](documentation_screenshots/image_8.png)
+
+### 4. Run SSL Setup: certbot.sh -
+
+
+```bash
+sudo ./certbot.sh
+```
+
+This script is the third step to run when setting up the bytEM application. The goal of this script is to perform 3 tasks -
+
+- Generate the SSL certificates and apply them to the nginx running in bytem-app container.
+- Generating a login token and placing that token in .env.bytem file generated in first step.
+- Override the ratelimit of matrix synapse server.
+- Restarts necessary containers to apply the changes.
+
+> You'll be prompted for an email address (used only for SSL certificate renewal notices from Let's Encrypt). Any valid email works.
+
+![alt text](documentation_screenshots/image_9.png)
+
+
+### 5. Run Whitelist Sync
+
+
+Whitelisting is a security mechanism that controls which bytEM instances (servers) can communicate with your instance. Think of it as an approved partners list - only bytEM servers on this list can exchange data with your instance.
+
+**Why Whitelisting is Needed:**
+
+- **Security:** Prevents unauthorized servers from accessing your data catalog or attempting exchanges
+- **Trust Network:** Ensures you only connect with verified bytEM instances operated by trusted organizations
+- **Federation Control:** In a decentralized network, whitelisting defines your trusted peer network
+
+To keep your federation whitelist and `/solr` endpoint secure, run the whitelist sync script:
+
+```bash
+sudo ./whitelist-sync.sh
+```
+
+![alt text](documentation_screenshots/image_10.png)
+
+This script will: -
+
+- Fetch the latest list of allowed domains from the bytEM registry.
+- Update your homeserver.yaml with the correct federation whitelist.
+- Restrict access to the /solr endpoint in Nginx so only bytEM servers can connect.
+- Reload the Nginx configuration inside the Docker container.
+
+## More Details About bytEM Installation (Optional)
+
+This section provides a deeper look at how bytEM is packaged and orchestrated behind the scenes.  
+You do not need to understand or modify these details for a standard installation, but they may be useful for advanced users or troubleshooting.
+
+---
+
+### Docker Images Used
+
+bytEM uses several Docker images for its services:
+
+```bash
+REPOSITORY             TAG                   IMAGE ID       CREATED             SIZE
+bytem-app              latest                208ed7919084   23 minutes ago      292MB
+bytem-be               latest                9472fd408ec4   25 minutes ago      2.1GB
+bytem-bot              latest                37d0118c4688   About an hour ago   378MB
+postgres               14-alpine             fb250e5b8f7b   2 weeks ago         278MB
+matrixdotorg/synapse   v1.123.0              0a805e026713   7 months ago        418MB
+rabbitmq               3-management-alpine   699b570c4b87   12 months ago       176MB
+solr                   9.5.0                 579a59112bcc   19 months ago       580MB
+```
+
+- Dockerfile.backend builds the Exchange server image.
+- Dockerfile.bot builds the bot image.
+- Dockerfile.bytemApp builds the React front-end (served by Nginx, includes certbot for SSL automation).
+
+### Container orchestration -
+
+- All services are managed using Docker Compose (docker-compose.yaml).
+- This file defines the containers and how they interact.
+- The PWA (`bytem-pwa`) is configured automatically through environment variables — no extra setup needed.
+
+### Services (Containers) and Ports Binding:
+
+- The names of current services (containers) in the stack are as follows -
+- The Ports used by current services (containers) in the stack and their bindings with the host port are as follows. The format is - _(&lt;host_port&gt;:&lt;container_port&gt;)_ -
+
+<table>
+<thead>
+<tr>
+<th>Sr. No.</th>
+<th>Service (Container) Name</th>
+<th>Details</th>
+<th>Port Binding</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.</td>
+<td>bytem-app</td>
+<td>React Front-end</td>
+<td>80:80<br>443:443<br>8448:8448 (Matrix federation, TLS-terminated by nginx)</td>
+</tr>
+<tr>
+<td>2.</td>
+<td>bytem-be</td>
+<td>Exchange server (node js?)</td>
+<td>9999:9999 (FE port)<br>3000:3000 (Exchange port)</td>
+</tr>
+<tr>
+<td>3.</td>
+<td>bytem-bot</td>
+<td>Bot(s)</td>
+<td>4000:4000</td>
+</tr>
+<tr>
+<td>5.</td>
+<td>bytem-rabbitmq</td>
+<td>RabbitMQ queues</td>
+<td>5672:5672 (Server port)<br>15672:15672 (UI port)</td>
+</tr>
+<tr>
+<td>6.</td>
+<td>bytem-solr</td>
+<td>Apache Solr (search engine)</td>
+<td>8983:8983</td>
+</tr>
+<tr>
+<td>7.</td>
+<td>bytem-synapse</td>
+<td>Matrix Synapse server</td>
+<td>8008:8008 (Default)<br>8009:8009 (sliding sync)</td>
+</tr>
+<tr>
+<td>8.</td>
+<td>bytem-synapse-db</td>
+<td>Postgres DB used by matrix synapse server</td>
+<td>5432:5432</td>
+</tr>
+</tbody></table>
+
+
+
+### Volumes -
+
+- There are some persistent volumes mounted on containers to persist the data from the container filesystem on the host machine filesystem -
+
+- bytem-rabbitmq-data - Volume used by container 'bytem-rabbitmq' to persist the data of RabbitMQ server.
+- Bytem-rabbitmq-log - Volume used by container 'bytem-rabbitmq' to persist the logs of RabbitMQ server
+- Bytem-synapse-db-data - Volume used by container 'bytem-synapse-db' to persist the data of postgresDB used by Matrix synapse server.
+- bytem-solr-data - Volume used by container 'bytem-solr' to persist Solr's core data and configsets.
+
+Apart from above named volumes, We have some directories mounted from host machine to the containers. Details of them are as below -
+
+- **bytem-solr-data (named volume) -** Stores Solr's core data and configsets, used by the bytem-solr container. bytem-bot talks to Solr over HTTP (`SOLR_URL`), not a shared directory.
+- **generated_config_files/ -** This directory is created in the root of the project by (env_setup.sh) to generate .env.bytem file and synapse and nginx config files. This directory is mounted inside the containers bytem-app, and bytem-synapse so that the generated nginx config files and synapse homeserver.yaml are available for both the containers to use.
+- **certbot/ -**  This directory will include generated SSL Certificates. This directory is mounted inside bytem-app container.
+- **.env.bytem -** This is env variables file used to determine the config options needed for the bytEM to function. This file is generated in the root of the project when we run the first bash script (env_setup.sh). This file is mounted inside the containers bytem-be and bytem-bot.
+
+
+## Matrix User & Server Management Guide
+
+This section helps you test your Matrix installation and manage users on your bytEM server.
+
+
+## 6. Create Your First bytEM User (Required)
+
+Creating a bytEM user (Matrix user) is required to start using bytEM and to test your installation.
+
+**Interactive method:**
+```sh
+sudo docker exec -it bytem-synapse register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
+```
+- You will be prompted for:
+  1. Username (e.g. `test`)
+  2. Password (e.g. `test`)
+  3. Whether to make the user an admin (`yes` recommended for first user)
+
+**Non-interactive method (example):**
+```sh
+sudo docker exec -it bytem-synapse register_new_matrix_user \
+  -c /data/homeserver.yaml \
+  --user test \
+  --password "test" \
+  --admin \
+  http://localhost:8008
+```
+- This creates an admin user `@test:your-domain` with password `test`.
+
+> **Note:** If the command says `User ID already taken`, that's not an error — the user already exists from a previous run of the script. Just log in with the existing credentials, or pick a different username.
+
+---
+
+## 7. Test Your Installation (Required)
+
+After installation, perform these checks to confirm everything is working:
+
+### 1. **Nginx Test**
+- Open your bytEM domain in a browser (e.g. `https://matrix.bytem.your-domain.app`)
+- You should see the bytEM login page.
+- If the page does not load, Nginx or SSL setup may have failed.
+
+![Nginx Test](documentation_screenshots/image_11.png)
+
+### 2. **bytEM Login Page Test**
+- Go to the bytEM login page (e.g. `https:/bytem.your-domain.app/user/login`)
+- Enter the user credentials you created above.
+- You should be able to log in successfully.
+
+![bytEM Login Test](documentation_screenshots/image_12.png)
+
+### 3. **User Login Test**
+- Use the credentials for your bytEM user (Matrix user) to log in.
+
+![bytEM Login Test](documentation_screenshots/image_13.png)
+
+- If login fails, check the Matrix Synapse container logs:
+  ```sh
+  sudo docker logs bytem-synapse --tail 50
+  ```
+- If the Homeserver field on the login page shows an unexpected domain, or login fails right after a fresh install, do a hard refresh in your browser (Ctrl+Shift+R) to clear the cached page and try again.
+
+---
+
+
+## Support & Community
+
+### Matrix Support Room
+
+Join our public Matrix support room to get help with your bytEM installation:
+
+- Room Address: `#bytem-support:matrix.liberbyte.com`
+- Direct Link: [#bytem-support:matrix.liberbyte.com](https://matrix.to/#/#bytem-install-admin:matrix.liberbyte.com)
+
+
+
+You can access this room with any Matrix client like Element:
+1. Open Element: [app.element.io](https://app.element.io)
+2. Click "Explore"
+3. Enter `#bytem-support:matrix.liberbyte.com`
+4. Join the room
+
+
+Our support team is available to help with installation issues, configuration questions, and best practices.
+
+
+### General Troubleshooting
+
+- If Nginx or bytEM login page does not load, check container status:
+  ```sh
+  sudo docker ps
+  ```
+- If login fails, check Synapse logs and user creation steps.
+- Ensure your domain is whitelisted and SSL certificates are valid.
+
+---
+
+> **Note:**  
+> Replace all placeholder values in commands:
+> - `your-domain`: Your actual domain/subdomain
+> - `USERNAME`: The Matrix/bytEM username (e.g. `test`)
+> - `PASSWORD`: The password you set for the user
+
+---
+
+**With these steps, you can verify your bytEM installation and ensure user login is working.**
+
+---
+
+## Upgrading bytEM to a New Version
+
+Upgrading bytEM is simple and preserves all your existing data, users, and certificates:
+
+```bash
+sudo ./install.sh
+```
+
+**What happens during upgrade:**
+- Pulls the latest bytEM Docker images
+- Recreates containers with the new images
+- **Preserves all existing data:** Docker volumes, Matrix users, SSL certificates, and configurations remain intact
+
+**No need to:**
+- Re-run `env_setup.sh`
+- Re-generate SSL certificates (`certbot.sh`)
+- Re-configure domain settings
+- Re-run whitelist sync (`whitelist-sync.sh`)
+
+**After upgrade, verify:**
+- Check containers are running: `sudo docker ps`
+- Test login with existing users
+- Verify services are accessible

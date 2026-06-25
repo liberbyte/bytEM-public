@@ -94,4 +94,4 @@ The list of trusted, federated bytEM server domains an instance is allowed to ex
 
 ---
 
-*Maintained alongside [USER_GUIDE.md](USER_GUIDE.md) and [GUIDE.md](GUIDE.md) — add a new term here any time a new concept comes up in conversation, so the definition stays in one place instead of being re-explained ad hoc.*
+*Maintained alongside [BYTEM_USER_GUIDE.md](BYTEM_USER_GUIDE.md) and [BYTEM_INSTALL.md](BYTEM_INSTALL.md) — add a new term here any time a new concept comes up in conversation, so the definition stays in one place instead of being re-explained ad hoc.*
