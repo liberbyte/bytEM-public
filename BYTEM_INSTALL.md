@@ -125,8 +125,9 @@ This script is the second step to run when setting up the bytEM application. The
 
 - Changing ownership permission of directory 'generated_config_files' to 991 so that bytem-synapse container can use the homeserver.yaml and log.config file.
 - Start the docker containers by executing docker compose commands.
-- Register the first matrix synapse admin user by executing 'register_new_matrix_user' command inside 'bytem-synapse container'
-- Restart the container bytem-be and bytem-bot for the changes to take effect
+- Register the bot/admin matrix user by executing the 'register_new_matrix_user' command inside the 'bytem-synapse' container, then log in as that user to obtain a Matrix login token and save it to .env.bytem.
+- Restart the entire docker stack so all containers pick up the new login token.
+- Fix any hardcoded domains baked into the frontend bundle to match your actual domain, and create a welcome page for the matrix subdomain.
 - Configures internal networking so the app can reach the homeserver correctly
 
 <!-- ![alt text](documentation_screenshots/image_3.png) -->
@@ -155,12 +156,11 @@ we see all docker containers are up and running successfully
 sudo ./certbot.sh
 ```
 
-This script is the third step to run when setting up the bytEM application. The goal of this script is to perform 3 tasks -
+This script is the third step to run when setting up the bytEM application. The goal of this script is to -
 
-- Generate the SSL certificates and apply them to the nginx running in bytem-app container.
-- Generating a login token and placing that token in .env.bytem file generated in first step.
-- Override the ratelimit of matrix synapse server.
-- Restarts necessary containers to apply the changes.
+- Obtain (or renew) Let's Encrypt SSL certificates for your bytEM and Matrix domains, bootstrapping a temporary self-signed certificate first so nginx can start before the real certificate is issued, and falling back to a self-signed certificate if Let's Encrypt fails.
+- Regenerate the nginx configs with the correct certificate paths and reload nginx in the bytem-app container.
+- Fix any hardcoded domains baked into the frontend bundle to match your actual domain.
 
 > You'll be prompted for an email address (used only for SSL certificate renewal notices from Let's Encrypt). Any valid email works.
 
@@ -191,7 +191,9 @@ This script will: -
 - Fetch the latest list of allowed domains from the bytEM registry.
 - Update your homeserver.yaml with the correct federation whitelist.
 - Restrict access to the /solr endpoint in Nginx so only bytEM servers can connect.
-- Reload the Nginx configuration inside the Docker container.
+- Reload the Nginx configuration and the Matrix Synapse configuration inside their Docker containers.
+- Set the bot/admin user's Matrix ratelimit override (using the login token generated in the install.sh step) so it isn't throttled by Synapse.
+- Restart the bytem-synapse, bytem-bot, bytem-be, and bytem-app containers to apply everything.
 
 ## More Details About bytEM Installation (Optional)
 
@@ -256,6 +258,12 @@ solr                   9.5.0                 579a59112bcc   19 months ago       
 <td>bytem-bot</td>
 <td>Bot(s)</td>
 <td>4000:4000</td>
+</tr>
+<tr>
+<td>4.</td>
+<td>bytem-pwa</td>
+<td>Progressive Web App front-end</td>
+<td>8002:3002</td>
 </tr>
 <tr>
 <td>5.</td>
