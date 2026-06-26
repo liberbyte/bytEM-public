@@ -217,8 +217,6 @@ After clicking, the page polls a status endpoint and walks through a checklist i
 | Creating demand room | A brand-new Matrix room is created for this request |
 | Setting DEID | The new Demand Room is tagged with the reference DEID you requested |
 | Resolving data source | The matching Supply Room is located. If none is exchangeable for this DEID, this step fails with *"No supply available for this DEID"* |
-| Processing data access fee | ⚠️ **Cosmetic only** — this is a ~1.5s delay with no real payment, billing, or charge involved in this alpha |
-| Confirming transaction | ⚠️ **Cosmetic only** — same as above, no real transaction occurs |
 | Exchanging data | The actual exchange runs automatically (an "auto-exchange") — equivalent to the Supply side's data being pushed into your new room |
 | Setting permissions | Your account is added to the room at a restricted permission level (see note below) |
 | Inviting you — auto-accepting invitation | You're invited into the room, and the invitation auto-retries if Matrix rate-limits it |
@@ -228,7 +226,7 @@ After clicking, the page polls a status endpoint and walks through a checklist i
 
 > **Permissions:** you're added with Matrix power level 51, while the room's default `events_default` is 50 — so despite being described as "read-only" access, you technically *can* send events into the room (51 ≥ 50). Don't rely on this room being strictly locked down to viewing only.
 
-> **Guest access is explicitly forbidden** on these self-service-created rooms. (Guest access on manually-created Demand Rooms is in any case ⛔ disabled in the current version — see [Section 7](#guest-access).)
+> **Guest access is explicitly forbidden** on these self-service-created rooms. (Guest access on manually-created Demand Rooms is in any case ⛔ disabled for this version — see [Section 7](#guest-access).)
 
 ### Step 4 — Explore the data room
 
@@ -388,9 +386,8 @@ A **Workflow** tab exists in the Supply editor but is **disabled** in the curren
 
 ### DATA EXCHANGE / PROVISION Section
 
-> ⛔ The **Search Event** panel (a collapsible "Select and search your schema" search box) has been **removed / disabled** in the current version — you can ignore it. Work with a room's supply entries through the **Data by DEID** list and the bottom tabs below.
+> ⛔ The **Search Event** panel (a collapsible "Select and search your schema" search box) has been **disabled for this version** — you can ignore it. Work with a room's supply entries through the **Data by DEID** list and the bottom tabs below.
 
-![DATA EXCHANGE / PROVISION section — Data by DEID list and bottom tabs](documentation_screenshots/data_exchange_provision.png)
 
 #### Room Location — in detail
 
@@ -430,9 +427,9 @@ The tab order in the current build is: **MetaData | References | Files | HTML | 
 | **bytEM Repo** | A media/asset repository view for this entry's downloadable files |
 | **Map** | Geographic map data (GeoJSON) attached to this entry |
 
-> ⛔ The **Forms** tab has been **removed / disabled** in the current version.
+> ⛔ The **Forms** tab has been **disabled for this version**.
 
-> ⛔ The **Control** panel and the **Search Event** panel that appeared in earlier versions are both **removed / disabled** in the current build.
+> ⛔ The **Control** panel and the **Search Event** panel that appeared in earlier versions are both **disabled for this version**.
 
 ![Supply Room — bottom tabs and the Data by DEID list](documentation_screenshots/supply_room_bottom.png)
 
@@ -545,12 +542,12 @@ Click any chip at the top to run that command in the terminal:
 | Shortcut | Runs | Purpose |
 |---|---|---|
 | `help` | `help` | ✅ Lists all available commands |
-| `search *` | `search --event-type *` | ⛔ **Disabled / not working in the current version** |
+| `search *` | `search --event-type *` | ⛔ **Disabled for this version** |
 | `find *` | `find *` | ✅ Lists data for this room's reference DEID |
 | `room-deid` | `room-deid --schema` | ⚙️ A **Supply-side** command — used in Supply rooms, not part of the demand workflow |
 | `show-room-index` | `show-room-index` | ⚙️ A **Supply-side** command — used in Supply rooms, not part of the demand workflow |
 
-> **About `find` / `search` in the current version:** **`find *` works** — it lists the data for this room's reference DEID (use the on-screen **Find** button or type `find *`). However, **`search` and the field-scoped `find <field> <value>` form are ⛔ disabled / not working** in the current bm1 build. The index/DEID self-service flow ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)) also creates the room and runs the exchange for you automatically.
+> **About `find` / `search` in the current version:** **`find *` works** — it lists the data for this room's reference DEID (use the on-screen **Find** button or type `find *`). However, **`search` and the field-scoped `find <field> <value>` form are ⛔ disabled for this version**. The index/DEID self-service flow ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)) also creates the room and runs the exchange for you automatically.
 
 ### Room Information Panel
 
@@ -567,11 +564,11 @@ Click any chip at the top to run that command in the terminal:
 
 | Tab | Status | Purpose |
 |---|---|---|
-| **Results** | ⛔ disabled | Not working in the current version |
-| **Publish** | ⛔ disabled | Not working in the current version |
-| **Mgmt. Logs** | ⛔ disabled | Not working in the current version |
+| **Results** | ⛔ disabled | Disabled for this version |
+| **Publish** | ⛔ disabled | Disabled for this version |
+| **Mgmt. Logs** | ⛔ disabled | Disabled for this version |
 | **Room Location** | ✅ active (greyed out once set) | Set the geographic/logical location for this demand (JSON or interactive map). Once a location schema exists for the room, this tab appears greyed-out and is no longer editable |
-| **Commands** | ⛔ disabled | Not working in the current version |
+| **Commands** | ⛔ disabled | Disabled for this version |
 
 ### DATA EXCHANGE / SUBSCRIPTION Tabs
 
@@ -579,8 +576,8 @@ Click any chip at the top to run that command in the terminal:
 |---|---|---|
 | **Searched/Found** | ✅ active | Lists Supply Rooms / data matching your reference DEID after you run `find *` |
 | **Exchanged** | ✅ active | Lists what you've exchanged — the actual received data. Shows a success banner (e.g. *"Data for the demand room !xMz…:matrix.bytem.bm1.liberbyte.app has been exchanged successfully."*) with the timestamp of the exchange |
-| **Exch. Details** | ⛔ disabled | Not working in the current version |
-| **Exch. Logs** | ⛔ disabled | Not working in the current version |
+| **Exch. Details** | ⛔ disabled | Disabled for this version |
+| **Exch. Logs** | ⛔ disabled | Disabled for this version |
 
 #### Searched/Found — in detail
 
@@ -606,7 +603,7 @@ Once data has actually been exchanged, this tab shows its own row of **inner tab
 
 ### Guest Access
 
-⛔ **Guest access is disabled / not working in the current version.** The feature is *intended* to let a Demand Room be viewed by people without a bytEM login (e.g. to share received data publicly, like a dashboard, without giving out accounts), with the **Guest Accessible** field in the Room Information panel showing the state. In the current build this field stays `Disabled` and the guest-access commands below do not work:
+⛔ **Guest access is disabled for this version.** The feature is *intended* to let a Demand Room be viewed by people without a bytEM login (e.g. to share received data publicly, like a dashboard, without giving out accounts), with the **Guest Accessible** field in the Room Information panel showing the state. In the current build this field stays `Disabled` and the guest-access commands below do not work:
 
 ```bash
 enable-guest-user      # ⛔ disabled — (intended) make this demand room's data viewable by guests
@@ -653,7 +650,7 @@ This is the core workflow that makes bytEM useful — connecting a data provider
 
 11. Check the **Exchanged** tab to see the received data, broken into MetaData / Reference / Map / HTML / API / bytEM Repo / Echart sub-tabs depending on what was sent.
 
-12. **Exch. Details** and **Exch. Logs** are ⛔ **disabled / not working in the current version.**
+12. **Exch. Details** and **Exch. Logs** are ⛔ **disabled for this version.**
 
 ### Quick summary
 
@@ -702,8 +699,8 @@ room-advertisement --schema     # ⚙️ Edit/show this room's advertisement doc
 
 ```bash
 find *                          # ✅ List data for THIS room's reference DEID (not a global search)
-find <field> <value>            # ⛔ DISABLED / not working in the current build (only find * works)
-search --event-type *           # ⛔ DISABLED / not working in the current build
+find <field> <value>            # ⛔ DISABLED for this version (only find * works)
+search --event-type *           # ⛔ DISABLED for this version
 exchange-data --exchange-type=1 <event_types>   # ⚙️ One-off exchange of the given/checked event-types
 exchange-data --exchange-type=2 <event_types>   # ⚙️ Continuous exchange (confirm behaviour on instance)
 find-in-room --search-key <string> --event-type <type>   # ✅ Search within exchanged data
@@ -715,7 +712,7 @@ download                        # ✅ Download just the event-types currently ch
 openapi-exec                    # ⚙️ Execute OpenAPI for whichever event-types are checked
 ```
 
-> Guest-access commands (`enable-guest-user` / `disable-guest-user` / `grant-guest-access`) are ⛔ **disabled / not working** in the current version. See [Section 7 — Guest Access](#guest-access).
+> Guest-access commands (`enable-guest-user` / `disable-guest-user` / `grant-guest-access`) are ⛔ **disabled for this version**. See [Section 7 — Guest Access](#guest-access).
 
 ### Removing data / rooms
 
