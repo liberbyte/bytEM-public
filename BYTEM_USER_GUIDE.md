@@ -123,7 +123,7 @@ Shows every Supply and Demand room you belong to.
 
 A single bytEM account can own and manage any number of Supply and Demand rooms at once. The Matrix protocol still applies at the room level (e.g. user power levels).
 
-You cannot create a supply room without a valid deid url. This deid url can either be an existing deid url from your organization or you can create a new deid url by using the new-deid command in the terminal. 
+You **can** create a Supply Room even without a valid DEID URL — but you **cannot add data** to the room until it has a valid DEID. If you entered an invalid (or placeholder) DEID during room creation, you can edit it afterwards via the terminal (`room-deid --schema` → edit the `deid` value → `room-deid --save`, or the **Save** button in the DEID editor — see [Section 6](#setting-the-deid)), and *then* add your data. The DEID can be an existing one from your organisation or a new one you define. (Once data has been uploaded, the DEID is locked and can no longer be changed.) 
 ---
 
 ## 5. Creating a Data Room
@@ -140,12 +140,12 @@ The dialog is the same for both room types — pick the **Room Base Type** (`sup
 | **Room Description** | What this room is for, e.g. `Water quality data for Berlin` |
 | **Data Room Alias** | A short ID (auto-suggested, editable) — keep the auto-suggestion |
 | **Room Type** | *(Supply only)* The kind of data entity — the dropdown may default to `entity`; choose **`dataset`** for now |
-| **DEID URLs** | *(Supply only)* The URL identifying your data source/schema (see [Section 6](#deid--what-url-to-use)). Pre-filled with your instance's base domain, e.g. `https://bm1.liberbyte.app/de/test_1` |
+| **DEID URLs** | *(Supply only)* The URL identifying your data source/schema (see [Section 6](#deid--what-url-to-use)). Pre-filled with your instance's base domain — the finished DEID identifies your data, e.g. `https://alpha.environment.app/de/water/water-protection-areas` |
 | **Public or Private** | Visibility — **Private** is the default for Supply rooms; **Public** is typical for Demand rooms so suppliers can discover them |
 
 > **Data Room Alias:** use the auto-suggested alias rather than overwriting it — it's generated to satisfy Matrix protocol room-alias requirements.
 
-> **DEID (Supply only):** the DEID URL uses your instance's base domain **without** any `bytem.` prefix (e.g. `https://bm1.liberbyte.app/de/test_1`), or a published schema domain such as `https://alpha.environment.app/de/deid-1`. The field is pre-filled with your instance's base domain to make this easy. See ["What URL to use"](#deid--what-url-to-use) in Section 6 for the full rule.
+> **DEID (Supply only):** the DEID URL uses your instance's base domain **without** any `bytem.` prefix, or a published schema domain — e.g. `https://alpha.environment.app/de/water/water-protection-areas`. The field is pre-filled with your instance's base domain to make this easy. See ["What URL to use"](#deid--what-url-to-use) in Section 6 for the full rule.
 
 > `exchange` and `registry` room types appear in the dropdown but are not for general use — `exchange` is shown disabled, `registry` is admin-only.
 
@@ -252,9 +252,9 @@ Open by clicking a 🟢 green room → **Open Data Room**.
 
 | Field | Description |
 |---|---|
-| **Data Room** | The room's display name (e.g. `asset_202606010_17`), with a copy button |
-| **Data Room ID** | The room's unique Matrix ID (e.g. `!FPzEXMjFkbwNzLgjdD:matrix.bytem.bm1.liberbyte.app`) — needed for some terminal commands and exchange links |
-| **Data Room Alias** | A short, human-readable alias (e.g. `#asset_202606010_17:matrix.bytem.bm1.liberbyte.app`) |
+| **Data Room** | The room's display name (e.g. `Drinking water bodies in Germany as map`), with a copy button |
+| **Data Room ID** | The room's unique Matrix ID (e.g. `!WuRSgcWipIJMFogHuv:matrix.bytem.alpha.environment.app`) — needed for some terminal commands and exchange links |
+| **Data Room Alias** | A short, human-readable alias (e.g. `#Drinking water bodies in Germany as map:matrix.bytem.alpha.environment.app`) |
 | **Data Room Link** | A shareable link directly to this room's editor |
 
 ### Entity Readiness Panel
@@ -270,10 +270,10 @@ This shows how complete and "live" your Supply Room is. Each row has a colored d
 | **Market Status** | Whether this room is listed in the wider bytEM market/federation and open for exchange |
 
 
-> **Example from bm1:** A fully configured Supply Room on bm1 shows:
-> - **Base Type:** 🟡 `supply`
-> - **DEID:** 🟢 `https://bm1.liberbyte.app/de/t...` (truncated in the UI; click copy to see the full URL)
-> - **Class:** 🟢 `bm1_test_17`
+> **Example — a fully configured Supply Room shows:**
+> - **Base Type:** 🟢 `supply`
+> - **DEID:** 🟢 `https://alpha.environment.app/de/water/water-protection-areas` (may be truncated in the UI; click copy to see the full URL)
+> - **Class:** 🟢 `https://environment.app/class/WaterProtectionArea`
 > - **Entity Status:** 🟢 `registered`
 > - **Market Status:** 🟢 `exchangeable`
 
@@ -312,12 +312,12 @@ Running `--schema` prints a fillable template, e.g.:
 }
 ```
 
-**What URL to use:** <a name="deid--what-url-to-use"></a> the `deid` value is a URL on your instance's **base domain, without any `bytem.` prefix** — or a published schema domain. For an instance served at `bytem.bm1.liberbyte.app`, valid DEIDs look like:
+**What URL to use:** <a name="deid--what-url-to-use"></a> the `deid` value is a URL on your instance's **base domain, without any `bytem.` prefix** — or a published schema domain. meaningful DEIDs look like:
 
 ```
-https://bm1.liberbyte.app/de/test_1
-https://bm1.liberbyte.app/de/berlin/water
-https://alpha.environment.app/de/deid-1
+https://alpha.environment.app/de/water/water-body-metabolites
+https://alpha.environment.app/de/water/drinking-water-protection-areas
+https://alpha.environment.app/de/water/water-protection-areas
 ```
 
 The Create-Data-Room dialog pre-fills the DEID field with your instance's base domain, so you usually just append a path. The path after the domain can be anything that meaningfully describes your data.
@@ -413,14 +413,14 @@ The editing pattern is the same for each: the tree renders in read-only **view**
 
 A Supply Room always has a single DEID. (A Demand Room, by contrast, is an assembly of one or more DEIDs — see [Section 7](#7-demand-room--data-demand-editor).)
 
-All tabs sit underneath the same **Data by DEID** list — expand your DEID entry (e.g. `bm1.liberbyte.app/de/berlin/water`), then expand the data entry beneath it (e.g. `supply-type-dataset`) to see that tab's content for this specific entry. Each tab is its own "content slot" attached to that entry — independent of the others.
+All tabs sit underneath the same **Data by DEID** list — expand your DEID entry (e.g. `alpha.environment.app/de/water/water-protection-areas`), then expand the data entry beneath it (e.g. `supply-type-dataset`) to see that tab's content for this specific entry. Each tab is its own "content slot" attached to that entry — independent of the others.
 
 The tab order in the current build is: **MetaData | References | Files | HTML | API | bytEM Repo | Map**. (The **Forms** tab has been removed/disabled, and **References** is now the second tab, right after MetaData.)
 
 | Tab | Purpose |
 |---|---|
 | **MetaData** | The entry's raw JSON-LD record, viewable as an editable tree — this is your default view, showing metadata plus any links/paths/URLs to the attached API or dataset |
-| **References** | Reference documents/links attached to this entry — now the **second** tab, right after MetaData. References point to other DEIDs (e.g. for building composite data products) — look up the referenced DEID's details with `find *`, and it can be exchanged like any other DEID |
+| **References** | Reference documents/links attached to this entry — now the **second** tab, right after MetaData. References point to other DEIDs (e.g. for building composite data products) — look up the referenced DEID's details with `find <deid_url>`, and it can be exchanged like any other DEID |
 | **Files** | Upload a file to this entry, from your device or a URL (or pull one back with **Download from bytEM**) |
 | **HTML** | HTML/event rendering for this entry |
 | **API** | API-related data (OpenAPI-style endpoint definitions) attached to this entry |
@@ -461,7 +461,7 @@ Use the search box and expand/collapse arrows above the tree to navigate large r
 
 #### References — in detail
 
-Shows supporting reference documents/links for this entry. In the bm1 build, this is the **second** tab (right after MetaData). Starts empty until something is attached. References point to other DEIDs — look up a referenced DEID's details with `find *`, and it can be exchanged like any other DEID.
+Shows supporting reference documents/links for this entry. In the bm1 build, this is the **second** tab (right after MetaData). Starts empty until something is attached. References point to other DEIDs — look up a referenced DEID's details with `find <deid_url>`, and it can be exchanged like any other DEID.
 
 #### Files — in detail
 
@@ -543,22 +543,23 @@ Click any chip at the top to run that command in the terminal:
 |---|---|---|
 | `help` | `help` | ✅ Lists all available commands |
 | `search *` | `search --event-type *` | ⛔ **Disabled for this version** |
-| `find *` | `find *` | ✅ Lists data for this room's reference DEID |
+| `find <deid_url>` | `find <deid_url>` | ✅ Lists data for a specific DEID URL (e.g. `find https://alpha.environment.app/de/water/water-protection-areas`) |
+| `find *` | `find *` | ⛔ **Disabled for this version** — use `find <deid_url>` or the Reference tab's **See overview** button |
 | `room-deid` | `room-deid --schema` | ⚙️ A **Supply-side** command — used in Supply rooms, not part of the demand workflow |
 | `show-room-index` | `show-room-index` | ⚙️ A **Supply-side** command — used in Supply rooms, not part of the demand workflow |
 
-> **About `find` / `search` in the current version:** **`find *` works** — it lists the data for this room's reference DEID (use the on-screen **Find** button or type `find *`). However, **`search` and the field-scoped `find <field> <value>` form are ⛔ disabled for this version**. The index/DEID self-service flow ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)) also creates the room and runs the exchange for you automatically.
+> **About `find` / `search` in the current version:** **`find *` is not working in this version.** To look up the data for a DEID, type **`find <deid_url>`** (the specific DEID URL) in the terminal — e.g. `find https://alpha.environment.app/de/water/water-protection-areas` — **or** open the **Reference** tab and click the **See overview** button. (`search` and the field-scoped `find <field> <value>` form are also ⛔ disabled for this version.) The index/DEID self-service flow ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)) also creates the room and runs the exchange for you automatically.
 
 ### Room Information Panel
 
 | Field | Description |
 |---|---|
-| **Data Room** | Room name (e.g. `asset_202606012_09`) |
-| **Data Room ID** | Unique Matrix room ID (e.g. `!xMzKBvolfyzJNCOFjc:matrix.bytem.bm1.liberbyte.app`) |
-| **Data Room Alias** | Short alias identifier (e.g. `#asset_202606012_09:matrix.bytem.bm1.liberbyte.app`) |
+| **Data Room** | Room name (e.g. `Demand — alpha.environment.app/de/water/water-body-metabolites`) |
+| **Data Room ID** | Unique Matrix room ID (e.g. `!cfrpybZUBOKsneKveB:matrix.bytem.alpha.environment.app`) |
+| **Data Room Alias** | Short alias identifier (e.g. `#Demand — alpha.environment.app/de/water/water-body-metabolites:matrix.bytem.alpha.environment.app`) |
 | **Data Room Link** | Shareable link to this room's editor |
-| **Guest Accessible** | Shows `Enabled` (green) or `Disabled` (grey) — see [Guest Access](#guest-access) below for details |
-| **Room Coordinates** | Geographic coordinates for this room (e.g. `50.040046,8.569722`), shown once a location has been set |
+| **Guest Accessible** | Shows `Disabled` — guest access is ⛔ disabled for this version (see [Guest Access](#guest-access) below) |
+| **Room Coordinates** | Geographic coordinates for this room (e.g. `52.460877,13.087661`), shown once a location has been set |
 
 ### DATA MANAGEMENT Section
 
@@ -574,14 +575,14 @@ Click any chip at the top to run that command in the terminal:
 
 | Tab | Status | Purpose |
 |---|---|---|
-| **Searched/Found** | ✅ active | Lists Supply Rooms / data matching your reference DEID after you run `find *` |
-| **Exchanged** | ✅ active | Lists what you've exchanged — the actual received data. Shows a success banner (e.g. *"Data for the demand room !xMz…:matrix.bytem.bm1.liberbyte.app has been exchanged successfully."*) with the timestamp of the exchange |
+| **Searched/Found** | ✅ active | Lists Supply Rooms / data matching your DEID after you run `find <deid_url>` (or use the Reference tab's **See overview** button) |
+| **Exchanged** | ✅ active | Lists what you've exchanged — the actual received data. Shows a success banner (e.g. *"Data for the demand room !cfrpybZUBOKsneKveB:matrix.bytem.alpha.environment.app has been exchanged successfully."*) with the timestamp of the exchange |
 | **Exch. Details** | ⛔ disabled | Disabled for this version |
 | **Exch. Logs** | ⛔ disabled | Disabled for this version |
 
 #### Searched/Found — in detail
 
-Shows results from `find *` (run via the on-screen **Find** button or by typing `find *`), with a progress indicator while results load, pagination for large result sets, and an event-type selector. This is the tab you check to see what's available before requesting an Exchange (see [Section 8](#8-how-supply-and-demand-exchange-data) for the exact sequence). Tick the checkboxes next to the results you want, then run `exchange-data`. (Only `find *` works — the field-scoped `find <field> <value>` form and `search` are ⛔ disabled.)
+Shows results from `find <deid_url>` (type it in the terminal, or open the **Reference** tab and click **See overview**), with a progress indicator while results load, pagination for large result sets, and an event-type selector. This is the tab you check to see what's available before requesting an Exchange (see [Section 8](#8-how-supply-and-demand-exchange-data) for the exact sequence). Tick the checkboxes next to the results you want, then run `exchange-data <deid_url>` (or click the **Exchange** button here). (`find *`, the field-scoped `find <field> <value>` form, and `search` are ⛔ disabled for this version.)
 
 #### Exchanged — in detail
 
@@ -599,7 +600,7 @@ Once data has actually been exchanged, this tab shows its own row of **inner tab
 
 > There's no **Files** inner tab in the Exchanged view — you're receiving data here, not uploading. Before anything has been exchanged, any inner tab that isn't gated-on yet just shows its own "no data" message.
 
-> In the bm1 build, the **Data by DEID** list under the Exchanged tab shows each DEID that has been exchanged (e.g. `bm1.liberbyte.app/de/test_8`, `bm1.liberbyte.app/de/xyz`) with the number of supply types and an **Exchanged** badge. Expand a DEID entry to browse its data across the inner tabs.
+> In the bm1 build, the **Data by DEID** list under the Exchanged tab shows each DEID that has been exchanged (e.g. `alpha.environment.app/de/water/water-body-metabolites`, `alpha.environment.app/de/water/water-protection-areas`) with the number of supply types and an **Exchanged** badge. Expand a DEID entry to browse its data across the inner tabs.
 
 ### Guest Access
 
@@ -633,18 +634,17 @@ This is the core workflow that makes bytEM useful — connecting a data provider
 
 6. Open the index at `https://<your-bytem-domain>/pwa/index-room`.
 7. Click **Access data →** on the DEID listing you want. bytEM **automatically creates a Demand Room with that DEID set as its reference** and runs the exchange for you (the full self-service flow is detailed step-by-step in [Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)).
-8. Open that Demand Room. The exchange has already run automatically in step 7, so the received data is in the **Exchanged** tab. You can also re-run the lookup yourself with **`find *`** — via the on-screen **Find** button or the xterm terminal:
+8. Open that Demand Room. The exchange has already run automatically in step 7, so the received data is in the **Exchanged** tab. You can also re-run the lookup yourself with **`find <deid_url>`**, or by opening the **Reference** tab and clicking **See overview**:
    ```bash
-   find *                  # ✅ Lists data for this room's reference DEID
+   find <deid_url>         # ✅ e.g. find https://alpha.environment.app/de/water/water-protection-areas
    ```
-   The results populate the **Searched/Found** tab. (Only `find *` works — the field-scoped `find <field> <value>` form and `search` are ⛔ disabled in the current build.)
+   The results populate the **Searched/Found** tab. (`find *`, the field-scoped `find <field> <value>` form, and `search` are ⛔ disabled for this version.)
 9. In the **Searched/Found** tab, tick the checkboxes next to the results you want.
-10. Run **exchange-data** (or use the on-screen exchange button):
+10. Run **`exchange-data <deid_url>`**, or click the **Exchange** button in the **Searched/Found** tab (after the find step):
     ```bash
-    exchange-data --exchange-type=1 <event_type1> <event_type2>   # ⚙️ one-off exchange
-    exchange-data --exchange-type=2 <event_type1> <event_type2>   # ⚙️ continuous exchange
+    exchange-data <deid_url>   # ⚙️ e.g. exchange-data https://alpha.environment.app/de/water/water-protection-areas
     ```
-    ⚙️ `exchange-data` is bot-side. `--exchange-type=1` is a one-off exchange; `--exchange-type=2` is a continuous exchange. It acts on the event-types you pass / have checked in the Searched/Found tab. *(Confirm continuous behaviour on the bm1 instance — auto-propagation of later supply updates is still being stabilised in this alpha.)*
+    ⚙️ `exchange-data` is bot-side and runs a **one-off exchange by default** (no `--exchange-type` flag needed). It acts on the DEID you pass, or on the results you've checked in the Searched/Found tab.
 
 **After exchanging:**
 
@@ -654,7 +654,7 @@ This is the core workflow that makes bytEM useful — connecting a data provider
 
 ### Quick summary
 
-**Supplier publishes (DEID + Class + data) until Market Status is `exchangeable`. Consumer goes to `/pwa/index-room`, clicks the DEID → bytEM auto-creates a Demand Room *with that reference DEID* and runs the exchange. Inside that room, `find` (per-DEID) and `exchange-data` then work (xterm or on-screen buttons). A manually-created Demand Room has no reference DEID and cannot drive `find`/`exchange-data`.**
+**Supplier publishes (DEID + Class + data) until Market Status is `exchangeable`. Consumer goes to `/pwa/index-room`, clicks the DEID → bytEM auto-creates a Demand Room *with that reference DEID* and runs the exchange. Inside that room, `find <deid_url>` (or the Reference tab's **See overview** button) and `exchange-data` then work. A manually-created Demand Room has no reference DEID and cannot drive `find`/`exchange-data`.**
 
 ---
 
@@ -674,7 +674,6 @@ The terminal is available on the **Overview page**, inside **Supply Rooms**, and
 ```bash
 help                          # ✅ List all available commands in the current context
 clear                         # ✅ Clear the terminal window
-leave --room-id <room_id>     # ✅ Leave a data room
 delete-room --room-id <room_id>   # ✅ Delete a room entirely (irreversible) — same as the
                                   #   "Delete Data Room" context-menu action
 room-location --schema [--lat <lat> --lon <lon>]   # ⚙️ Set / update the room's location
@@ -689,27 +688,22 @@ room-class --schema             # ✅ Fetch this room's Class template
 room-class --save               # ⚙️ Save the Class (or click the Save button in the editor)
 load-supply <supply-type>       # ⚙️ Load a supply template (dataset, api, html, …) and add data
 show-room-index                 # ✅ Show this room's index state event (quick-action chip)
-room-advertisement --schema     # ⚙️ Edit/show this room's advertisement document
-                                #   (Note: this command is not shown by `help` but is available)
 ```
 
 ### Demand Room
 
-> Remember: `find *` works **per-DEID** and only does something in a Demand Room that has a **reference DEID** — i.e. one created via the index/DEID flow ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)), not a hand-created one. Use the on-screen **Find** button, or type `find *`. (The field-scoped `find <field> <value>` form and `search` are ⛔ disabled.)
+> Remember: `find` works **per-DEID** and only does something in a Demand Room that has a **reference DEID** — i.e. one created via the index/DEID flow ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)), not a hand-created one. Use **`find <deid_url>`** (or the **Reference** tab's **See overview** button). (`find *`, the field-scoped `find <field> <value>` form, and `search` are ⛔ disabled for this version.)
 
 ```bash
-find *                          # ✅ List data for THIS room's reference DEID (not a global search)
-find <field> <value>            # ⛔ DISABLED for this version (only find * works)
+find <deid_url>                 # ✅ List data for a specific DEID URL (e.g. find https://alpha.environment.app/de/water/water-protection-areas)
+find *                          # ⛔ DISABLED for this version — use find <deid_url> (or the Reference tab's See overview button)
+find <field> <value>            # ⛔ DISABLED for this version
 search --event-type *           # ⛔ DISABLED for this version
-exchange-data --exchange-type=1 <event_types>   # ⚙️ One-off exchange of the given/checked event-types
-exchange-data --exchange-type=2 <event_types>   # ⚙️ Continuous exchange (confirm behaviour on instance)
-find-in-room --search-key <string> --event-type <type>   # ✅ Search within exchanged data
-result *                        # ✅ Build a Result from all exchanged data (filtered to checked types)
-result find-in-room <search-string> *           # ✅ Build a Result from a find-in-room search
+exchange-data <deid_url>        # ⚙️ One-off exchange (the default) of the given DEID / checked results —
+                                #    or click the Exchange button in the Searched/Found tab after find
 download <media-repo-URL>       # ✅ Download a specific file by its media URL
 download *                      # ✅ Download every event-type that has files, zipped
 download                        # ✅ Download just the event-types currently checked
-openapi-exec                    # ⚙️ Execute OpenAPI for whichever event-types are checked
 ```
 
 > Guest-access commands (`enable-guest-user` / `disable-guest-user` / `grant-guest-access`) are ⛔ **disabled for this version**. See [Section 7 — Guest Access](#guest-access).
@@ -722,18 +716,6 @@ delete-room --all                          # ⚙️ Remove all event-types from 
 ```
 
 > Note: `delete-room` replaced the older `rm` command. The bare **Delete Data Room** context-menu action deletes the whole room.
-
-### Advanced / Bulk Tooling
-
-These aren't part of the everyday bytEM OUDEA workflow.
-
-```bash
-room-create <name> --desc <description> [--alias <alias>]   # ✅ Overview "Create Rooms" batch tool
-room-create --batch                  # ✅ JSON panel for creating multiple rooms (Overview only)
-list_servers                         # ⚙️ List available search servers (Demand context)
-load-schema <schema-url>             # ⚙️ Fetch and validate a JSON schema from a URL (no save)
-cmd-last-exec --schema --run         # ⚙️ Re-run the last command stored in this room's command schema
-```
 
 > Commands that take arguments print their own usage/examples in the terminal if you run them bare — type the command name to see the in-app help.
 
@@ -769,10 +751,10 @@ Each card in the index shows:
 
 | Field | Example | Description |
 |---|---|---|
-| **Room name** | `Water Body Metabolites` | The Supply Room's display name |
+| **Room name** | `Water Protection Areas` | The Supply Room's display name |
 | **Status badge** | `exchangeable` (green) | Shows the room's market status — only `exchangeable` rooms appear here |
-| **DEID path** | `/de/water/water-body-metabolites` | The DEID identifier (shortened from the full URL) |
-| **Class tag** | `water-body-metabolites` | The room's data classification |
+| **DEID path** | `/de/water/water-protection-areas` | The DEID identifier (shortened from the full URL) |
+| **Class tag** | `water-protection-areas` | The room's data classification |
 | **Domain tag** | `alpha.environment.app` | The instance/domain the room belongs to |
 | **Access data →** | (link) | Click to open the DEID access page ([Section 5a](#5a-self-service-data-access-the-index-room--deid-flow)) where you can request an exchange |
 
@@ -807,8 +789,8 @@ Room tags in the Data Rooms list: 🟢 **green = Supply**, 🟣 **purple = Deman
 A few things worth knowing as you work:
 
 - **DEID and Class** turn green once you successfully save (via `--save` or the **Save** button) and the value is accepted — re-check by refreshing the page after a few seconds.
-- **DEID format:** use your instance's base domain **without** a `bytem.` prefix (e.g. `https://bm1.liberbyte.app/de/...`), or a published schema domain like `https://alpha.environment.app/de/...`.
-- **`find` is per-DEID**, not a global "find everything." In an index-created Demand Room, use the **Find** button (or `find`) to pull that room's reference-DEID data.
+- **DEID format:** use your instance's base domain **without** a `bytem.` prefix, or a published schema domain — e.g. `https://alpha.environment.app/de/water/water-protection-areas`.
+- **`find` is per-DEID**, not a global "find everything." In an index-created Demand Room, run **`find <deid_url>`** (or open the **Reference** tab and click **See overview**) to pull that room's reference-DEID data. (`find *` is ⛔ disabled for this version.)
 - **Entity Status** commonly stays yellow ("local") even after a successful DEID save. This reflects that your entry is saved but pending full network confirmation — this can depend on factors outside the room itself (e.g. whether your instance is actively connected to the wider bytEM federation).
 - **Market Status** depends on your instance being listed in the federation market and reachable by peer bytEM servers. If your instance isn't yet connected to other bytEM servers, this will stay red regardless of how complete your room is — this isn't something you can fix from within the room.
 - If something you saved (DEID, Class, a file) doesn't appear after a refresh, wait roughly 10–15 seconds and refresh again — processing happens slightly asynchronously. If it's still missing after that, contact your administrator with the room name and what you tried to save.
