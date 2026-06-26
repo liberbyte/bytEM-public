@@ -543,7 +543,6 @@ Click any chip at the top to run that command in the terminal:
 |---|---|---|
 | `help` | `help` | ✅ Lists all available commands |
 | `search *` | `search --event-type *` | ⛔ **Disabled for this version** |
-| `find <deid_url>` | `find <deid_url>` | ✅ Lists data for a specific DEID URL (e.g. `find https://alpha.environment.app/de/water/water-protection-areas`) |
 | `find *` | `find *` | ⛔ **Disabled for this version** — use `find <deid_url>` or the Reference tab's **See overview** button |
 | `room-deid` | `room-deid --schema` | ⚙️ A **Supply-side** command — used in Supply rooms, not part of the demand workflow |
 | `show-room-index` | `show-room-index` | ⚙️ A **Supply-side** command — used in Supply rooms, not part of the demand workflow |
