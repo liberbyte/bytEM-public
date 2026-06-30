@@ -299,7 +299,7 @@ Then test login with an existing user and confirm services are accessible.
 | Image | Tag | Size |
 |---|---|---|
 | `bytem-app` | latest | 292 MB |
-| `bytem-be` | latest | 2.1 GB |
+| `bytem-be` | latest | 408 MB |
 | `bytem-bot` | latest | 378 MB |
 | `postgres` | 14-alpine | 278 MB |
 | `matrixdotorg/synapse` | v1.123.0 | 418 MB |
