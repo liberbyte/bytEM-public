@@ -21,7 +21,7 @@ set +u
 source .env.bytem
 set -u
 
-# Export key variables that docker-compose config needs
+# Export key variables that docker compose config needs
 export NODE_ENV CONFIG_TYPE API_HOST MATRIX_SERVER EXCH_SERVER BYTEM_DOMAIN MATRIX_DOMAIN
 
 # Variables
@@ -45,7 +45,7 @@ sudo chown -R 991:991 "${CONFIG_DIR}"
 header_message "Ensuring clean Docker environment"
 
 log "Stopping and removing all containers and networks..."
-sudo docker-compose down --remove-orphans 2>/dev/null || true
+sudo docker compose down --remove-orphans 2>/dev/null || true
 
 header_message "Removing Docker images"
 
@@ -55,7 +55,7 @@ sudo docker image prune -a -f
 header_message "Pulling latest Docker images"
 
 log "Pulling images from Docker Hub..."
-sudo docker-compose --env-file .env.bytem pull
+sudo docker compose --env-file .env.bytem pull
 
 header_message "Ensuring nginx template is available"
 
@@ -79,7 +79,7 @@ log "Starting Docker containers..."
 MAX_RETRIES=3
 RETRY_DELAY=20
 for i in $(seq 1 $MAX_RETRIES); do
-    if sudo docker-compose up -d; then
+    if sudo docker compose up -d; then
         log "Docker containers started successfully."
         break
     elif [[ $i -eq $MAX_RETRIES ]]; then
@@ -178,7 +178,7 @@ fi
 header_message "Restarting all containers to apply new bot token"
 
 log "Performing full restart to apply updated token..."
-if sudo docker-compose down && sudo docker-compose up -d; then
+if sudo docker compose down && sudo docker compose up -d; then
     log "All containers restarted successfully with new token."
     sleep 10  # Give containers time to initialize
 else
