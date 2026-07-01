@@ -110,43 +110,57 @@ else
         fi
     fi
     
-    # Bootstrap: nginx needs a certificate file to start, but Let's Encrypt's HTTP-01
-    # challenge needs nginx already running on port 80 to serve it. Generate a short-lived
-    # self-signed certificate in a SEPARATE directory (not the "live" path certbot manages,
-    # since certbot refuses to issue into a "live" dir that already contains files) so nginx
-    # can come up before we request the real one.
+    # Bootstrap: nginx needs a certificate file to start (SSL server blocks), but
+    # Let's Encrypt's HTTP-01 challenge needs nginx running on port 80 first.
+    # Break the deadlock by writing HTTP-only configs (no SSL blocks at all) so
+    # nginx can start without any certificate and serve ACME challenges cleanly.
     if [ "$SKIP_RENEWAL" = false ] && [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
-        echo -e "${YELLOW}Bootstrapping temporary self-signed certificate so nginx can start...${NC}"
-        mkdir -p "./certbot/conf/bootstrap/${BYTEM_DOMAIN}"
-        mkdir -p "./certbot/conf/bootstrap/${MATRIX_DOMAIN}"
-        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-            -keyout "./certbot/conf/bootstrap/${BYTEM_DOMAIN}/privkey.pem" \
-            -out "./certbot/conf/bootstrap/${BYTEM_DOMAIN}/fullchain.pem" \
-            -subj "/C=US/ST=State/L=City/O=BytEM/CN=${BYTEM_DOMAIN}" 2>/dev/null
-        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-            -keyout "./certbot/conf/bootstrap/${MATRIX_DOMAIN}/privkey.pem" \
-            -out "./certbot/conf/bootstrap/${MATRIX_DOMAIN}/fullchain.pem" \
-            -subj "/C=US/ST=State/L=City/O=BytEM/CN=${MATRIX_DOMAIN}" 2>/dev/null
+        echo -e "${YELLOW}Writing HTTP-only bootstrap nginx configs (no SSL certs needed yet)...${NC}"
+        mkdir -p "generated_config_files/nginx_config"
 
-        if [ -f "config_templates/nginx_config_templates/bytem.template" ] && [ -f "config_templates/nginx_config_templates/matrix.bytem.template" ]; then
-            sudo sed -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
-                -e "s|\${CERT_PATH}|/etc/letsencrypt/bootstrap/${BYTEM_DOMAIN}|g" \
-                -e "s/listen 443 ssl http2;/listen 443 ssl;/g" \
-                -e "s/listen \[::\]:443 ssl http2;/listen [::]:443 ssl;/g" \
-                config_templates/nginx_config_templates/bytem.template > \
-                generated_config_files/nginx_config/${BYTEM_DOMAIN}.conf
-            sudo sed -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
-                -e "s|\${CERT_PATH}|/etc/letsencrypt/bootstrap/${MATRIX_DOMAIN}|g" \
-                -e "s/listen 443 ssl http2;/listen 443 ssl;/g" \
-                -e "s/listen \[::\]:443 ssl http2;/listen [::]:443 ssl;/g" \
-                config_templates/nginx_config_templates/matrix.bytem.template > \
-                generated_config_files/nginx_config/matrix.${BYTEM_DOMAIN}.conf
-        fi
+        sudo tee "generated_config_files/nginx_config/${BYTEM_DOMAIN}.conf" > /dev/null << EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${BYTEM_DOMAIN};
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files \$uri =404;
+    }
+    location / {
+        return 200 'bootstrapping';
+    }
+}
+EOF
+
+        sudo tee "generated_config_files/nginx_config/matrix.${BYTEM_DOMAIN}.conf" > /dev/null << EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${MATRIX_DOMAIN};
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files \$uri =404;
+    }
+    location / {
+        return 200 'bootstrapping';
+    }
+}
+EOF
 
         if sudo docker ps -a --format '{{.Names}}' | grep -q "^bytem-app$"; then
             sudo docker restart bytem-app >/dev/null 2>&1
-            echo -e "${YELLOW}Waiting for nginx to come up with the bootstrap certificate...${NC}"
-            sleep 8
+            echo -e "${YELLOW}Waiting for nginx to come up on port 80...${NC}"
+            WAIT_COUNT=0
+            until curl -sf --connect-timeout 2 -o /dev/null "http://localhost/" 2>/dev/null; do
+                sleep 2
+                WAIT_COUNT=$((WAIT_COUNT + 1))
+                if [ $WAIT_COUNT -ge 30 ]; then
+                    echo -e "${RED}Nginx did not respond on port 80 after 60s - certbot may fail${NC}"
+                    break
+                fi
+            done
+            echo -e "${GREEN}Nginx is responding on port 80${NC}"
         fi
     fi
 
@@ -255,6 +269,22 @@ if [ -f "config_templates/nginx_config_templates/matrix.bytem.template" ]; then
     echo -e "${GREEN}Generated Matrix nginx config with HTTP/2 fix${NC}"
 fi
 
+# Restart the container to pick up the new SSL config (it was running HTTP-only during
+# the bootstrap/certbot phase), then wait for it to be reachable before testing.
+if sudo docker ps -a --format '{{.Names}}' | grep -q "^bytem-app$"; then
+    echo -e "${YELLOW}Restarting bytem-app to load SSL configuration...${NC}"
+    sudo docker restart bytem-app >/dev/null 2>&1
+    WAIT_COUNT=0
+    until sudo docker exec bytem-app nginx -t 2>/dev/null; do
+        sleep 3
+        WAIT_COUNT=$((WAIT_COUNT + 1))
+        if [ $WAIT_COUNT -ge 20 ]; then
+            echo -e "${RED}bytem-app did not become ready after 60s${NC}"
+            break
+        fi
+    done
+fi
+
 # Test and reload nginx if container is running
 if sudo docker ps | grep -q "bytem-app"; then
     echo -e "${YELLOW}Testing nginx configuration...${NC}"
@@ -265,7 +295,7 @@ if sudo docker ps | grep -q "bytem-app"; then
             sudo docker restart bytem-app
             sleep 5
         }
-        
+
         # Copy config.js to web root to ensure it's accessible
         echo -e "${YELLOW}Ensuring config.js is accessible...${NC}"
         sudo docker exec bytem-app cp /etc/nginx/conf.d/config.js /usr/share/nginx/html/config.js 2>/dev/null || true
@@ -274,7 +304,7 @@ if sudo docker ps | grep -q "bytem-app"; then
         echo -e "${YELLOW}Nginx config test failed, restarting container...${NC}"
         sudo docker restart bytem-app
         sleep 5
-        
+
         # Copy config.js to web root after restart
         echo -e "${YELLOW}Ensuring config.js is accessible after restart...${NC}"
         sudo docker exec bytem-app cp /etc/nginx/conf.d/config.js /usr/share/nginx/html/config.js 2>/dev/null || true
