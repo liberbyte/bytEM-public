@@ -66,6 +66,7 @@ else
     
     # Check if certificates already exist and are valid
     SKIP_RENEWAL=false
+    IS_RENEWAL=false
     if [ -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ] && [ -f "./certbot/conf/live/${BYTEM_DOMAIN}/privkey.pem" ]; then
         echo -e "${YELLOW}Existing certificates found, checking validity...${NC}"
         
@@ -103,6 +104,7 @@ else
         # Clean up if renewal is needed
         if [ "$SKIP_RENEWAL" = false ]; then
             echo -e "${YELLOW}Cleaning up existing certificates for renewal...${NC}"
+            IS_RENEWAL=true
             rm -rf "./certbot/conf/live/${BYTEM_DOMAIN}"
             rm -rf "./certbot/conf/archive/${BYTEM_DOMAIN}"
             rm -f "./certbot/conf/renewal/${BYTEM_DOMAIN}.conf"
@@ -110,77 +112,51 @@ else
         fi
     fi
     
-    # Bootstrap: nginx needs a certificate file to start (SSL server blocks), but
-    # Let's Encrypt's HTTP-01 challenge needs nginx running on port 80 first.
-    # Break the deadlock by writing HTTP-only configs (no SSL blocks at all) so
-    # nginx can start without any certificate and serve ACME challenges cleanly.
-    if [ "$SKIP_RENEWAL" = false ] && [ ! -f "./certbot/conf/live/${BYTEM_DOMAIN}/fullchain.pem" ]; then
-        echo -e "${YELLOW}Writing HTTP-only bootstrap nginx configs (no SSL certs needed yet)...${NC}"
-        mkdir -p "generated_config_files/nginx_config"
-
-        sudo tee "generated_config_files/nginx_config/${BYTEM_DOMAIN}.conf" > /dev/null << EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${BYTEM_DOMAIN};
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-        try_files \$uri =404;
-    }
-    location / {
-        return 200 'bootstrapping';
-    }
-}
-EOF
-
-        sudo tee "generated_config_files/nginx_config/matrix.${BYTEM_DOMAIN}.conf" > /dev/null << EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${MATRIX_DOMAIN};
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-        try_files \$uri =404;
-    }
-    location / {
-        return 200 'bootstrapping';
-    }
-}
-EOF
-
-        if sudo docker ps -a --format '{{.Names}}' | grep -q "^bytem-app$"; then
-            sudo docker restart bytem-app >/dev/null 2>&1
-            echo -e "${YELLOW}Waiting for nginx to come up on port 80...${NC}"
-            WAIT_COUNT=0
-            until curl -sf --connect-timeout 2 -o /dev/null "http://localhost/" 2>/dev/null; do
-                sleep 2
-                WAIT_COUNT=$((WAIT_COUNT + 1))
-                if [ $WAIT_COUNT -ge 30 ]; then
-                    echo -e "${RED}Nginx did not respond on port 80 after 60s - certbot may fail${NC}"
-                    break
-                fi
-            done
-            echo -e "${GREEN}Nginx is responding on port 80${NC}"
-        fi
-    fi
-
     # Generate new certificates if needed
     if [ "$SKIP_RENEWAL" = false ]; then
         echo -e "${YELLOW}Attempting Let's Encrypt certificate for ${BYTEM_DOMAIN} and ${MATRIX_DOMAIN}${NC}"
-        
-        if docker run --rm \
-            -v "${PWD}/certbot/conf:/etc/letsencrypt" \
-            -v "${PWD}/certbot/www:/var/www/certbot" \
-            certbot/certbot certonly \
-            --webroot \
-            --webroot-path=/var/www/certbot \
-            --email "$EMAIL" \
-            --agree-tos \
-            --no-eff-email \
-            --non-interactive \
-            --expand \
-            -d "$BYTEM_DOMAIN" \
-            -d "$MATRIX_DOMAIN"; then
+
+        # Initial acquisition: bytem-app can't start without certs (its entrypoint generates
+        # an SSL nginx config via envsubst), so port 80 is never available for webroot mode.
+        # Use certbot standalone instead — it binds port 80 directly, no nginx required.
+        # Renewal: nginx is already running with valid certs, so webroot mode works fine.
+        CERTBOT_SUCCESS=false
+        if ! $IS_RENEWAL; then
+            echo -e "${YELLOW}Initial acquisition: using standalone mode (stopping bytem-app to free port 80)${NC}"
+            if sudo docker ps --format '{{.Names}}' | grep -q "^bytem-app$"; then
+                sudo docker stop bytem-app >/dev/null 2>&1
+                sleep 2
+            fi
+            docker run --rm \
+                -v "${PWD}/certbot/conf:/etc/letsencrypt" \
+                -p 80:80 \
+                certbot/certbot certonly \
+                --standalone \
+                --email "$EMAIL" \
+                --agree-tos \
+                --no-eff-email \
+                --non-interactive \
+                --expand \
+                -d "$BYTEM_DOMAIN" \
+                -d "$MATRIX_DOMAIN" && CERTBOT_SUCCESS=true
+        else
+            echo -e "${YELLOW}Renewal: using webroot mode (nginx serves the challenge)${NC}"
+            docker run --rm \
+                -v "${PWD}/certbot/conf:/etc/letsencrypt" \
+                -v "${PWD}/certbot/www:/var/www/certbot" \
+                certbot/certbot certonly \
+                --webroot \
+                --webroot-path=/var/www/certbot \
+                --email "$EMAIL" \
+                --agree-tos \
+                --no-eff-email \
+                --non-interactive \
+                --expand \
+                -d "$BYTEM_DOMAIN" \
+                -d "$MATRIX_DOMAIN" && CERTBOT_SUCCESS=true
+        fi
+
+        if $CERTBOT_SUCCESS; then
             
             echo -e "${GREEN}Let's Encrypt certificates obtained successfully${NC}"
             
