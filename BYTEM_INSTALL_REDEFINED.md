@@ -18,7 +18,12 @@
 14. [Support](#support)
 
 ---
+## Video Guide for Installation
 
+https://github.com/user-attachments/assets/73e70afb-fae8-460c-9ce4-6636fe058f05
+
+
+---
 ## Prerequisites
 
 Before you begin, make sure you have the following:
