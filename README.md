@@ -26,6 +26,6 @@ Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM
 
 ## Documentation
 
-- 📦 [https://github.com/liberbyte/bytEM-public/blob/main/BYTEM_INSTALL_REDEFINED.md) — step-by-step installation guide
+- 📦 BYTEM_INSTALL_REDEFINED.md
 - 📖 [BYTEM_USER_GUIDE.md](BYTEM_USER_GUIDE.md) — how to use the app
 - 📚 [GLOSSARY.md](GLOSSARY.md) — dictionary of bytEM concepts (DEID, Class, Exchange, Federation, etc.)
