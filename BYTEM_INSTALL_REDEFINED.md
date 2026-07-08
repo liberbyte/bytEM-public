@@ -389,6 +389,6 @@ Join the public support room for installation help and configuration questions:
 
 ---
 
-### BytEM User Guide Link
+## BytEM User Guide Link
 
 https://github.com/liberbyte/bytEM-public/blob/main/BYTEM_USER_GUIDE.md
