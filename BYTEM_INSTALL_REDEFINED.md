@@ -387,6 +387,8 @@ Join the public support room for installation help and configuration questions:
 3. Search for `#bytem-support:matrix.liberbyte.com`
 4. Join the room
 
+---
+
 ### BytEM User Guide Link
 
 https://github.com/liberbyte/bytEM-public/blob/main/BYTEM_USER_GUIDE.md
