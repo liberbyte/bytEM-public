@@ -89,6 +89,7 @@ services:
       - NODE_ENV=production
       - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
       - SOLR_URL=http://bytem-solr:8983
+      - MATRIX_SERVER=http://bytem-synapse:8008
     ports:
       - 4000:4000
     volumes:
