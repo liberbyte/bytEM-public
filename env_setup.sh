@@ -99,11 +99,11 @@ prompt_for_value() {
 
 # Non-interactive mode: all required values must be provided as env vars
 NON_INTERACTIVE=false
-if [ -n "${DOMAIN_NAME:-}" ] && [ -n "${SUBDOMAIN_PREFIX:-}" ] && [ -n "${BOT_PASSWORD:-}" ] && [ -n "${RABBITMQ_PASSWORD:-}" ] && [ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
+if [ -n "${DOMAIN_NAME:-}" ] && [ -n "${SUBDOMAIN_PREFIX:-}" ] && [ -n "${BOT_PASSWORD:-}" ] && [ -n "${RABBITMQ_DEFAULT_PASS:-}" ] && [ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
   NON_INTERACTIVE=true
   info_message "Non-interactive mode: using all values from environment variables"
 elif [ "${1:-}" = "--non-interactive" ] || [ "${1:-}" = "-n" ]; then
-  echo -e "${RED}ERROR: Non-interactive mode requires DOMAIN_NAME, SUBDOMAIN_PREFIX, BOT_PASSWORD, RABBITMQ_PASSWORD, and SYNAPSE_POSTGRES_PASSWORD environment variables.${NC}"
+  echo -e "${RED}ERROR: Non-interactive mode requires DOMAIN_NAME, SUBDOMAIN_PREFIX, BOT_PASSWORD, RABBITMQ_DEFAULT_PASS, and SYNAPSE_POSTGRES_PASSWORD environment variables.${NC}"
   exit 1
 fi
 
@@ -178,14 +178,14 @@ if [ -z "${BOT_PASSWORD:-}" ]; then
   info_message "Auto-generated BOT_PASSWORD: $BOT_PASSWORD"
 fi
 # Auto-generate RabbitMQ credentials
-if [ -z "${RABBITMQ_USERNAME:-}" ]; then
-  RABBITMQ_USERNAME="bytem"
-  info_message "Auto-generated RABBITMQ_USERNAME: $RABBITMQ_USERNAME"
+if [ -z "${RABBITMQ_DEFAULT_USER:-}" ]; then
+  RABBITMQ_DEFAULT_USER="bytem"
+  info_message "Auto-generated RABBITMQ_DEFAULT_USER: $RABBITMQ_DEFAULT_USER"
 fi
 
-if [ -z "${RABBITMQ_PASSWORD:-}" ]; then
-  RABBITMQ_PASSWORD=$(generate_password)
-  info_message "Auto-generated RABBITMQ_PASSWORD: $RABBITMQ_PASSWORD"
+if [ -z "${RABBITMQ_DEFAULT_PASS:-}" ]; then
+  RABBITMQ_DEFAULT_PASS=$(generate_password)
+  info_message "Auto-generated RABBITMQ_DEFAULT_PASS: $RABBITMQ_DEFAULT_PASS"
 fi
 # Auto-generate Synapse Postgres password
 if [ -z "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
@@ -250,8 +250,8 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
             -e "s/\${BOT_USER}/$BOT_USER/g" \
             -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-            -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
-            -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
+            -e "s/\${RABBITMQ_DEFAULT_USER}/$RABBITMQ_DEFAULT_USER/g" \
+            -e "s/\${RABBITMQ_DEFAULT_PASS}/$RABBITMQ_DEFAULT_PASS/g" \
             -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
             -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
             -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
@@ -280,8 +280,8 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
       -e "s/\${BOT_USER}/$BOT_USER/g" \
       -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-      -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
-      -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
+      -e "s/\${RABBITMQ_DEFAULT_USER}/$RABBITMQ_DEFAULT_USER/g" \
+      -e "s/\${RABBITMQ_DEFAULT_PASS}/$RABBITMQ_DEFAULT_PASS/g" \
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
       -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
@@ -323,8 +323,8 @@ for template in "${NGINX_TEMPLATES[@]}"; do
       -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
       -e "s/\${BOT_USER}/$BOT_USER/g" \
       -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-      -e "s/\${RABBITMQ_USERNAME}/$RABBITMQ_USERNAME/g" \
-      -e "s/\${RABBITMQ_PASSWORD}/$RABBITMQ_PASSWORD/g" \
+      -e "s/\${RABBITMQ_DEFAULT_USER}/$RABBITMQ_DEFAULT_USER/g" \
+      -e "s/\${RABBITMQ_DEFAULT_PASS}/$RABBITMQ_DEFAULT_PASS/g" \
       -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
       -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
       -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
