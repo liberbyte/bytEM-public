@@ -22,7 +22,7 @@ source .env.bytem
 set -u
 
 # Export key variables that docker compose config needs
-export NODE_ENV CONFIG_TYPE API_HOST MATRIX_SERVER EXCH_SERVER DOMAIN_NAME MATRIX_DOMAIN
+export NODE_ENV CONFIG_TYPE API_HOST MATRIX_SERVER EXCH_SERVER DOMAIN_NAME MATRIX_SERVER_NAME
 
 # Variables
 CONFIG_DIR="generated_config_files/"
@@ -212,16 +212,16 @@ if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
     sudo docker exec bytem-app sed -i "s/'bytem\.[^']*'/'${DOMAIN_NAME}'/g" /usr/share/nginx/html/umi.js
     
     # Replace quoted matrix.bytem domains  
-    sudo docker exec bytem-app sed -i "s/\"matrix\.bytem\.[^\"]*\"/\"${MATRIX_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/'matrix\.bytem\.[^']*'/'${MATRIX_DOMAIN}'/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/\"matrix\.bytem\.[^\"]*\"/\"${MATRIX_SERVER_NAME}\"/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/'matrix\.bytem\.[^']*'/'${MATRIX_SERVER_NAME}'/g" /usr/share/nginx/html/umi.js
     
     # Replace https URLs
     sudo docker exec bytem-app sed -i "s|https://bytem\.[^/\"']*|https://${DOMAIN_NAME}|g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s|https://matrix\.bytem\.[^/\"']*|https://${MATRIX_DOMAIN}|g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s|https://matrix\.bytem\.[^/\"']*|https://${MATRIX_SERVER_NAME}|g" /usr/share/nginx/html/umi.js
     
     # Replace unquoted domains (be more specific to avoid breaking other text)
     sudo docker exec bytem-app sed -i "s/\bbytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${DOMAIN_NAME}/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/\bmatrix\.bytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${MATRIX_DOMAIN}/g" /usr/share/nginx/html/umi.js
+    sudo docker exec bytem-app sed -i "s/\bmatrix\.bytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${MATRIX_SERVER_NAME}/g" /usr/share/nginx/html/umi.js
     
     log "Frontend configuration updated successfully."
 else
@@ -237,8 +237,8 @@ header_message "Fixing Docker internal hostname resolution"
 
 log "Adding internal hostname entries to bytem-be and bytem-bot..."
 BYTEM_APP_IP=$(sudo docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bytem-app)
-sudo docker exec bytem-be sh -c "echo '$BYTEM_APP_IP ${DOMAIN_NAME} ${MATRIX_DOMAIN}' >> /etc/hosts"
-sudo docker exec bytem-bot sh -c "echo '$BYTEM_APP_IP ${DOMAIN_NAME} ${MATRIX_DOMAIN}' >> /etc/hosts"
+sudo docker exec bytem-be sh -c "echo '$BYTEM_APP_IP ${DOMAIN_NAME} ${MATRIX_SERVER_NAME}' >> /etc/hosts"
+sudo docker exec bytem-bot sh -c "echo '$BYTEM_APP_IP ${DOMAIN_NAME} ${MATRIX_SERVER_NAME}' >> /etc/hosts"
 log "Hostname resolution fixed."
 
 header_message "Script completed successfully."
