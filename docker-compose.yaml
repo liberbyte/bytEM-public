@@ -11,7 +11,7 @@ services:
     env_file:
       - .env.bytem
     environment:
-      BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
+      BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${DOMAIN_NAME}}
       MATRIX_DOMAIN: ${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
       NODE_ENV: ${NODE_ENV}
       CONFIG_TYPE: ${CONFIG_TYPE}
@@ -231,7 +231,7 @@ services:
       - .env.bytem
     environment:
       - NODE_ENV=production
-      - BYTEM_DOMAIN=${BYTEM_DOMAIN:-${EXCHANGE_SERVER_HOSTNAME}}
+      - BYTEM_DOMAIN=${BYTEM_DOMAIN:-${DOMAIN_NAME}}
       - MATRIX_DOMAIN=${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
       - NEXT_PUBLIC_API_BASE_URL=${API_HOST}
       - PWA_URL=${API_HOST}/

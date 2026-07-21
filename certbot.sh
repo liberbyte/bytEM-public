@@ -10,7 +10,7 @@ NC='\033[0m'
 # Load environment
 source .env.bytem
 
-BYTEM_DOMAIN=${EXCHANGE_SERVER_HOSTNAME}
+BYTEM_DOMAIN=${DOMAIN_NAME}
 MATRIX_DOMAIN=${MATRIX_SERVER_NAME}
 
 # Email handling with user prompt if not set
