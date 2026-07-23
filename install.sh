@@ -201,33 +201,6 @@ source .env.bytem
 # Wait for container to be ready
 sleep 5
 
-# Fix hardcoded domains in frontend JavaScript
-if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
-    log "Backing up original frontend files..."
-    sudo docker exec bytem-app cp /usr/share/nginx/html/umi.js /usr/share/nginx/html/umi.js.backup 2>/dev/null || true
-    
-    log "Replacing hardcoded domains with current configuration..."
-    # Replace quoted bytem domains
-    sudo docker exec bytem-app sed -i "s/\"bytem\.[^\"]*\"/\"${DOMAIN_NAME}\"/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/'bytem\.[^']*'/'${DOMAIN_NAME}'/g" /usr/share/nginx/html/umi.js
-    
-    # Replace quoted matrix.bytem domains  
-    sudo docker exec bytem-app sed -i "s/\"matrix\.bytem\.[^\"]*\"/\"${MATRIX_SERVER_NAME}\"/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/'matrix\.bytem\.[^']*'/'${MATRIX_SERVER_NAME}'/g" /usr/share/nginx/html/umi.js
-    
-    # Replace https URLs
-    sudo docker exec bytem-app sed -i "s|https://bytem\.[^/\"']*|https://${DOMAIN_NAME}|g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s|https://matrix\.bytem\.[^/\"']*|https://${MATRIX_SERVER_NAME}|g" /usr/share/nginx/html/umi.js
-    
-    # Replace unquoted domains (be more specific to avoid breaking other text)
-    sudo docker exec bytem-app sed -i "s/\bbytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${DOMAIN_NAME}/g" /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i "s/\bmatrix\.bytem\.[a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\b/${MATRIX_SERVER_NAME}/g" /usr/share/nginx/html/umi.js
-    
-    log "Frontend configuration updated successfully."
-else
-    log "Frontend files not found, skipping domain fix."
-fi
-
 # Create welcome page for matrix subdomain
 log "Creating welcome page for matrix subdomain..."
 sudo docker exec bytem-app sh -c 'printf "<!DOCTYPE html>\n<html>\n<head><title>Welcome to Matrix Server</title></head>\n<body><h1>Welcome to Nginx!</h1><p>Matrix server is running successfully.</p></body>\n</html>" > /usr/share/nginx/html/matrix-welcome.html' || true
