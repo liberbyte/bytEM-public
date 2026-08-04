@@ -210,22 +210,26 @@ if sudo docker exec bytem-app test -d /usr/share/nginx/html; then
     '
 
     log "Replacing hardcoded domains in all frontend JS files..."
-    # Pattern [a-zA-Z0-9.]*[a-zA-Z] only matches valid hostname labels (no hyphens, no digit-only
-    # segments), so it leaves constants like "bytem.app.room-deid" and "supply.bytem.app.999..."
-    # untouched. matrix.bytem domains are processed first to prevent partial replacement by the
-    # bytem rules below. All *.js files (including async chunks) are processed.
-
-    JS="/usr/share/nginx/html/*.js"
-
-    # matrix.bytem domains — double-quoted, single-quoted, https URLs
-    sudo docker exec bytem-app sh -c "sed -i 's/\"matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${MATRIX_SERVER_NAME}\"/g' ${JS}"
-    sudo docker exec bytem-app sh -c "sed -i \"s/'matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]'/'${MATRIX_SERVER_NAME}'/g\" ${JS}"
-    sudo docker exec bytem-app sh -c "sed -i 's|https://matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${MATRIX_SERVER_NAME}|g' ${JS}"
-
-    # bytem domains — double-quoted, single-quoted, https URLs
-    sudo docker exec bytem-app sh -c "sed -i 's/\"bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${DOMAIN_NAME}\"/g' ${JS}"
-    sudo docker exec bytem-app sh -c "sed -i \"s/'bytem\\.[a-zA-Z0-9.]*[a-zA-Z]'/'${DOMAIN_NAME}'/g\" ${JS}"
-    sudo docker exec bytem-app sh -c "sed -i 's|https://bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${DOMAIN_NAME}|g' ${JS}"
+    # Write the four replacement rules into a sed script inside the container.
+    # Variables are expanded by the outer shell before the script is written.
+    # Pattern [a-zA-Z0-9.]*[a-zA-Z] skips app constants that contain hyphens
+    # ("bytem.app.room-deid") or numeric suffixes ("supply.bytem.app.999...").
+    # matrix.bytem rules run first to prevent partial match by the bytem rules.
+    sudo docker exec bytem-app sh -c "
+echo 's/\"matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${MATRIX_SERVER_NAME}\"/g' > /tmp/domain_fix.sed
+echo 's|https://matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${MATRIX_SERVER_NAME}|g' >> /tmp/domain_fix.sed
+echo 's/\"bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${DOMAIN_NAME}\"/g' >> /tmp/domain_fix.sed
+echo 's|https://bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${DOMAIN_NAME}|g' >> /tmp/domain_fix.sed
+"
+    # Apply to every *.js file. Using sed -f + cp instead of sed -i to avoid
+    # "Resource busy" errors: cp overwrites the file's content in-place without
+    # renaming the inode, so nginx can keep the file open while we update it.
+    sudo docker exec bytem-app sh -c '
+        for f in /usr/share/nginx/html/*.js; do
+            sed -f /tmp/domain_fix.sed "$f" > /tmp/sed_out && cp /tmp/sed_out "$f" || true
+        done
+        rm -f /tmp/sed_out /tmp/domain_fix.sed
+    '
 
     log "Frontend configuration updated successfully."
 else
