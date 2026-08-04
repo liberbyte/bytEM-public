@@ -220,9 +220,6 @@ if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
     sudo docker exec bytem-app sed -i \
         "s|https://matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${MATRIX_SERVER_NAME}|g" \
         /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -E -i \
-        "s/\\bmatrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\\b/${MATRIX_SERVER_NAME}/g" \
-        /usr/share/nginx/html/umi.js
 
     sudo docker exec bytem-app sed -i \
         "s/\"bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${DOMAIN_NAME}\"/g" \
@@ -232,9 +229,6 @@ if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
         /usr/share/nginx/html/umi.js
     sudo docker exec bytem-app sed -i \
         "s|https://bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${DOMAIN_NAME}|g" \
-        /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -E -i \
-        "s/\\bbytem\\.[a-zA-Z0-9.]*[a-zA-Z]\\b/${DOMAIN_NAME}/g" \
         /usr/share/nginx/html/umi.js
 
     log "Frontend configuration updated successfully."
