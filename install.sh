@@ -201,39 +201,35 @@ source .env.bytem
 # Wait for container to be ready
 sleep 5
 
-if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
-    log "Backing up original frontend files..."
-    sudo docker exec bytem-app cp /usr/share/nginx/html/umi.js /usr/share/nginx/html/umi.js.backup 2>/dev/null || true
+if sudo docker exec bytem-app test -d /usr/share/nginx/html; then
+    log "Backing up original frontend JS files (skipped if backup already exists)..."
+    sudo docker exec bytem-app sh -c '
+        for f in /usr/share/nginx/html/*.js; do
+            [ ! -f "${f}.backup" ] && cp "$f" "${f}.backup" 2>/dev/null || true
+        done
+    '
 
-    log "Replacing hardcoded domains with current configuration..."
+    log "Replacing hardcoded domains in all frontend JS files..."
     # Pattern [a-zA-Z0-9.]*[a-zA-Z] only matches valid hostname labels (no hyphens, no digit-only
     # segments), so it leaves constants like "bytem.app.room-deid" and "supply.bytem.app.999..."
     # untouched. matrix.bytem domains are processed first to prevent partial replacement by the
-    # bytem rules below.
+    # bytem rules below. All *.js files (including async chunks) are processed.
 
-    sudo docker exec bytem-app sed -i \
-        "s/\"matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${MATRIX_SERVER_NAME}\"/g" \
-        /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i \
-        "s/'matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]'/'${MATRIX_SERVER_NAME}'/g" \
-        /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i \
-        "s|https://matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${MATRIX_SERVER_NAME}|g" \
-        /usr/share/nginx/html/umi.js
+    JS="/usr/share/nginx/html/*.js"
 
-    sudo docker exec bytem-app sed -i \
-        "s/\"bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${DOMAIN_NAME}\"/g" \
-        /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i \
-        "s/'bytem\\.[a-zA-Z0-9.]*[a-zA-Z]'/'${DOMAIN_NAME}'/g" \
-        /usr/share/nginx/html/umi.js
-    sudo docker exec bytem-app sed -i \
-        "s|https://bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${DOMAIN_NAME}|g" \
-        /usr/share/nginx/html/umi.js
+    # matrix.bytem domains — double-quoted, single-quoted, https URLs
+    sudo docker exec bytem-app sh -c "sed -i 's/\"matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${MATRIX_SERVER_NAME}\"/g' ${JS}"
+    sudo docker exec bytem-app sh -c "sed -i \"s/'matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]'/'${MATRIX_SERVER_NAME}'/g\" ${JS}"
+    sudo docker exec bytem-app sh -c "sed -i 's|https://matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${MATRIX_SERVER_NAME}|g' ${JS}"
+
+    # bytem domains — double-quoted, single-quoted, https URLs
+    sudo docker exec bytem-app sh -c "sed -i 's/\"bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${DOMAIN_NAME}\"/g' ${JS}"
+    sudo docker exec bytem-app sh -c "sed -i \"s/'bytem\\.[a-zA-Z0-9.]*[a-zA-Z]'/'${DOMAIN_NAME}'/g\" ${JS}"
+    sudo docker exec bytem-app sh -c "sed -i 's|https://bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${DOMAIN_NAME}|g' ${JS}"
 
     log "Frontend configuration updated successfully."
 else
-    log "Frontend files not found, skipping domain fix."
+    log "Frontend directory not found, skipping domain fix."
 fi
 
 # Create welcome page for matrix subdomain
