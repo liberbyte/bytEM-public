@@ -90,6 +90,7 @@ services:
       - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
       - SOLR_URL=http://bytem-solr:8983
       - MATRIX_SERVER=http://bytem-synapse:8008
+      - API_HOST_INTERNAL=http://bytem-be:3000
     ports:
       - 4000:4000
     volumes:
