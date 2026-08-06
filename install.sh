@@ -202,13 +202,6 @@ source .env.bytem
 sleep 5
 
 if sudo docker exec bytem-app test -d /usr/share/nginx/html; then
-    log "Backing up original frontend JS files (skipped if backup already exists)..."
-    sudo docker exec bytem-app sh -c '
-        for f in /usr/share/nginx/html/*.js; do
-            [ ! -f "${f}.backup" ] && cp "$f" "${f}.backup" 2>/dev/null || true
-        done
-    '
-
     log "Replacing hardcoded domains in all frontend JS files..."
     # Write the four replacement rules into a sed script inside the container.
     # Variables are expanded by the outer shell before the script is written.

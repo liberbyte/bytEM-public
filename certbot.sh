@@ -295,7 +295,6 @@ fi
 echo -e "${YELLOW}Fixing frontend configuration...${NC}"
 if sudo docker exec bytem-app test -f /usr/share/nginx/html/umi.js; then
     echo -e "${YELLOW}Updating frontend domains...${NC}"
-    sudo docker exec bytem-app cp /usr/share/nginx/html/umi.js /usr/share/nginx/html/umi.js.backup 2>/dev/null || true
     sudo docker exec bytem-app sed -i "s/\"bytem\.[^\"]*\"/\"${BYTEM_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
     sudo docker exec bytem-app sed -i "s/'bytem\.[^']*'/'${BYTEM_DOMAIN}'/g" /usr/share/nginx/html/umi.js
     sudo docker exec bytem-app sed -i "s/\"matrix\.bytem\.[^\"]*\"/\"${MATRIX_DOMAIN}\"/g" /usr/share/nginx/html/umi.js
