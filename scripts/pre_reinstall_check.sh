@@ -13,7 +13,15 @@ echo "PRE-REINSTALL STATE ($DATE)"
 echo "========================================"
 echo
 echo "1. SSL CERTIFICATES:"
-for domain in bytem.bfr.data-playground.de matrix.bytem.bfr.data-playground.de; do
+# Discover domains from .env.bytem if available, else scan certbot directory
+if [ -f .env.bytem ]; then
+  _BYTEM_DOMAIN=$(grep '^BYTEM_DOMAIN=' .env.bytem | cut -d= -f2 | head -1)
+  _MATRIX_DOMAIN=$(grep '^MATRIX_DOMAIN=' .env.bytem | cut -d= -f2 | head -1)
+  _DOMAINS="${_BYTEM_DOMAIN} ${_MATRIX_DOMAIN}"
+else
+  _DOMAINS=$(ls certbot/conf/live/ 2>/dev/null | grep -v README | tr '\n' ' ')
+fi
+for domain in ${_DOMAINS}; do
   cert_path="certbot/conf/live/$domain/fullchain.pem"
   if [ -f "$cert_path" ]; then
     mod_date=$(stat -c %y "$cert_path" | cut -d'.' -f1)
@@ -25,7 +33,8 @@ done
 echo
 echo "2. DOCKER VOLUMES:"
 docker volume ls --format '{{.Name}}' | grep '^bytem-' | while read vol; do
-  size=$(sudo du -sh /tmp/mock-bfr-liberbyte/bytem/docker/volumes/$vol/_data 2>/dev/null | awk '{print $1}')
+  vol_path=$(docker volume inspect "$vol" --format '{{.Mountpoint}}' 2>/dev/null || echo "")
+  size=$([ -n "$vol_path" ] && sudo du -sh "$vol_path" 2>/dev/null | awk '{print $1}' || echo "unknown")
   echo "   ✅ $vol (${size:-unknown})"
 done
 echo
@@ -39,7 +48,8 @@ fi
 echo
 echo "4. WHITELIST:"
 whitelist_file="generated_config_files/synapse_config/homeserver.yaml"
-grep -A 5 'federation_domain_whitelist:' "$whitelist_file" | grep -E 'matrix.org|matrix.bytem.bfr.data-playground.de' | sed 's/- //' | while read wl; do
+_WL_PATTERN=$([ -n "${_MATRIX_DOMAIN:-}" ] && echo "$_MATRIX_DOMAIN" || echo "matrix\.bytem\.")
+grep -A 5 'federation_domain_whitelist:' "$whitelist_file" | grep -E "matrix.org|${_WL_PATTERN}" | sed 's/- //' | while read wl; do
   echo "   ✅ $wl"
 done
 echo

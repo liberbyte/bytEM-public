@@ -1,5 +1,17 @@
 version: '3.6'
 
+x-logging-standard: &logging-standard
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-logging-verbose: &logging-verbose
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
 
   bytem-app:
@@ -11,12 +23,7 @@ services:
     env_file:
       - .env.bytem
     environment:
-      BYTEM_DOMAIN: ${BYTEM_DOMAIN:-${DOMAIN_NAME}}
-      MATRIX_DOMAIN: ${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
-      NODE_ENV: ${NODE_ENV}
       CONFIG_TYPE: ${CONFIG_TYPE}
-      API_HOST: ${API_HOST}
-      MATRIX_SERVER: ${MATRIX_SERVER}
       EXCH_SERVER: ${EXCH_SERVER}
     ports:
       - 80:80
@@ -27,11 +34,7 @@ services:
       - ./generated_config_files/nginx_config/config.js:/usr/share/nginx/html/config.js
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
+    logging: *logging-verbose
     networks:
       - bytem-network
 
@@ -50,10 +53,8 @@ services:
     env_file:
       - .env.bytem
     environment:
-      - NODE_ENV=production
       - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
       - SOLR_URL=http://bytem-solr:8983
-      - API_HOST_INTERNAL=http://bytem-be:3000
     ports:
       - 9999:9999
       - 3000:3000
@@ -62,12 +63,7 @@ services:
       - ./certbot/conf:/etc/letsencrypt
     dns:
       - 8.8.8.8
-      - 8.8.4.4
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
+    logging: *logging-verbose
     networks:
       - bytem-network
 
@@ -86,20 +82,14 @@ services:
     env_file:
       - .env.bytem
     environment:
-      - NODE_ENV=production
       - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
       - SOLR_URL=http://bytem-solr:8983
       - MATRIX_SERVER=http://bytem-synapse:8008
-      - API_HOST_INTERNAL=http://bytem-be:3000
     ports:
       - 4000:4000
     volumes:
       - ./.env.bytem:/app/.env.bytem
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
+    logging: *logging-standard
     networks:
       - bytem-network
 
@@ -116,11 +106,7 @@ services:
     volumes:
       - bytem-rabbitmq-data:/var/lib/rabbitmq/
       - bytem-rabbitmq-log:/var/log/rabbitmq
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logging-standard
     networks:
       - bytem-network
 
@@ -130,8 +116,6 @@ services:
     hostname: bytem-solr
     restart: always
     user: root
-    depends_on:
-      - bytem-be
     environment:
       - SOLR_LOG_LEVEL=WARN
       - SOLR_OPTS=-Dlog4j2.formatMsgNoLookups=true
@@ -141,11 +125,7 @@ services:
       - bytem-solr-data:/var/solr
     command:
       - -force
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logging-standard
     networks:
       - bytem-network
 
@@ -168,18 +148,13 @@ services:
       - ./generated_config_files/synapse_config:/data
     dns:
       - 8.8.8.8
-      - 8.8.4.4
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logging-standard
     networks:
       - bytem-network
 
@@ -232,22 +207,14 @@ services:
     env_file:
       - .env.bytem
     environment:
-      - NODE_ENV=production
-      - BYTEM_DOMAIN=${BYTEM_DOMAIN:-${DOMAIN_NAME}}
-      - MATRIX_DOMAIN=${MATRIX_DOMAIN:-${MATRIX_SERVER_NAME}}
       - NEXT_PUBLIC_API_BASE_URL=${API_HOST}
-      - API_HOST_INTERNAL=http://bytem-be:3000
       - PWA_URL=${API_HOST}/
       - PWA_BYTEM_DEMROOM_FRAME_BACKLINK=${API_HOST}/
       - PWA_DEMAND_BYTEM_GUEST=${API_HOST}/
       - PWA_MATRIX_BYTEM_URL=${MATRIX_SERVER}/
     ports:
       - 8002:3002
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logging-standard
     networks:
       - bytem-network
 

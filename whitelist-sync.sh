@@ -78,10 +78,7 @@ CONFIG_FILENAME=$(basename "$NGINX_CONFIG_PATH")
 FULL_DOMAIN=$(echo "$CONFIG_FILENAME" | sed 's/^bytem\.//' | sed 's/\.conf$//')
 CURRENT_DOMAIN=$(echo "$FULL_DOMAIN" | sed 's/^[^.]*\.//')
 
-FILTERED_DOMAINS=$(echo "$DOMAINS" | grep "\.${CURRENT_DOMAIN}$")
-PEERS=$(echo "$FILTERED_DOMAINS" | tr '\n' ' ')
 echo "✅ Current domain: $CURRENT_DOMAIN"
-echo "✅ Filtered peers for whitelist: $PEERS"
 
 # --- Backup original file ---
 cp "$HOMESERVER_PATH" "$HOMESERVER_PATH.bak"
@@ -160,9 +157,6 @@ echo "✅ Nginx reloaded in bytem-app container"
 # --- Reload synapse container ---
 docker kill -s HUP bytem-synapse
 echo "✅ Synapse configuration reloaded"
-
-# Load environment variables again
-source .env.bytem
 
 # Set rate limit override for admin/bot
 echo "Setting rate limit override..."
