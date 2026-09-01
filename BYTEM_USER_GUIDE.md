@@ -857,6 +857,9 @@ Deletes a room.
 
 > **Warning:** Deleting a room may permanently remove the room and its data.
 
+> **Note:** Only admin can delete a room.
+
+
 ---
 
 ## Supply Room Commands
