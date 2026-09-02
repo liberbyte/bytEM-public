@@ -65,7 +65,7 @@ TEMPLATE_DEST="${NGINX_CONFIG_DIR}/default.conf.template"
 
 if [ ! -f "$TEMPLATE_DEST" ]; then
   log "Extracting default.conf.template from bytem-app image..."
-  docker create --name tmp-nginx-tpl liberbyteadmin/bytem:app >/dev/null 2>&1 || true
+  docker create --name tmp-nginx-tpl liberbyteadmin/bytem:nginx >/dev/null 2>&1 || true
   docker cp tmp-nginx-tpl:/etc/nginx/conf.d/default.conf.template "$TEMPLATE_DEST"
   docker rm tmp-nginx-tpl >/dev/null 2>&1 || true
   log "Template saved to $TEMPLATE_DEST"
