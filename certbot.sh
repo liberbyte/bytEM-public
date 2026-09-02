@@ -8,23 +8,23 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Load environment
-source .env.bytem
+source .env
 
 BYTEM_DOMAIN=${DOMAIN_NAME}
 MATRIX_DOMAIN=${MATRIX_SERVER_NAME}
 
 # Email handling with user prompt if not set
 if [ -z "${SSL_EMAIL}" ]; then
-    echo -e "${YELLOW}SSL_EMAIL not set in .env.bytem${NC}"
+    echo -e "${YELLOW}SSL_EMAIL not set in .env${NC}"
     read -p "Enter your email for SSL certificate registration: " SSL_EMAIL
     if [ -z "${SSL_EMAIL}" ]; then
         EMAIL="admin@${DOMAIN_NAME:-example.com}"
         echo -e "${YELLOW}Using default email: ${EMAIL}${NC}"
     else
         EMAIL="${SSL_EMAIL}"
-        # Add email to .env.bytem for future use
-        echo "SSL_EMAIL=${SSL_EMAIL}" >> .env.bytem
-        echo -e "${GREEN}Email saved to .env.bytem${NC}"
+        # Add email to .env for future use
+        echo "SSL_EMAIL=${SSL_EMAIL}" >> .env
+        echo -e "${GREEN}Email saved to .env${NC}"
     fi
 else
     EMAIL="${SSL_EMAIL}"
