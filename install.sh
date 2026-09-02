@@ -16,9 +16,9 @@ header_message() {
   echo -e "${CYAN}==========================================${NC}"
 }
 
-# Source the .env.bytem file
+# Source the .env file
 set +u
-source .env.bytem
+source .env
 set -u
 
 # Export key variables that docker compose config needs
@@ -55,7 +55,7 @@ sudo docker image prune -a -f
 header_message "Pulling latest Docker images"
 
 log "Pulling images from Docker Hub..."
-sudo docker compose --env-file .env.bytem pull
+sudo docker compose --env-file .env pull
 
 header_message "Ensuring nginx template is available"
 
