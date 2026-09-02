@@ -41,9 +41,9 @@ info_message "Stopping Docker containers and removing volumes..."
 docker-compose down -v 2>/dev/null || true
 
 # Remove previous generated files
-if [ -d "$GENERATED_DIR" ] || [ -d "solr" ] || [ -d "certbot" ] || [ -f ".env.bytem" ]; then
+if [ -d "$GENERATED_DIR" ] || [ -d "solr" ] || [ -d "certbot" ] || [ -f ".env" ]; then
   info_message "Removing previous generated files..."
-  rm -rf generated_config_files/ solr/ certbot/ .env.bytem 2>/dev/null || true
+  rm -rf generated_config_files/ solr/ certbot/ .env 2>/dev/null || true
   success_message "Previous installation files removed."
 else
   success_message "No previous installation found - starting fresh."
@@ -58,7 +58,7 @@ mkdir -p "$GENERATED_DIR"
 mkdir -p "$GENERATED_DIR/synapse_config" "$GENERATED_DIR/nginx_config"
 
 info_message "Directory $GENERATED_DIR is created and config files are organized as follows:"
-success_message "- .env.bytem: In the root of the project"
+success_message "- .env: In the root of the project"
 success_message "- Config files Base Directory: $GENERATED_DIR"
 success_message "- Synapse Config: $GENERATED_DIR/synapse_config"
 success_message "- Nginx Config: $GENERATED_DIR/nginx_config"
@@ -224,11 +224,11 @@ if [ -z "${FEDERATION_MARKET_LIST_URL:-}" ]; then
   info_message "Using default FEDERATION_MARKET_LIST_URL: $FEDERATION_MARKET_LIST_URL"
 fi
 
-header_message "Generating .env.bytem file:"
+header_message "Generating .env file:"
 
-# Generate .env.bytem from .env.template
+# Generate .env from .env.template
 ENV_TEMPLATE_FILE=".env.template"
-ENV_OUTPUT_FILE=".env.bytem"
+ENV_OUTPUT_FILE=".env"
 
 if [ -f "$ENV_TEMPLATE_FILE" ]; then
   # Check if the output file already exists
@@ -259,6 +259,9 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
             -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
             -e "s/\${SYNAPSE_MACAROON_SECRET_KEY}/$SYNAPSE_MACAROON_SECRET_KEY/g" \
             -e "s/\${SYNAPSE_FORM_SECRET}/$SYNAPSE_FORM_SECRET/g" \
+            -e "s/\${REGISTRATION_SHARED_SECRET}/$REGISTRATION_SHARED_SECRET/g" \
+            -e "s/\${SOLR_PASSWORD}/$SOLR_PASSWORD/g" \
+            -e "s/\${JWT_SECRET}/$JWT_SECRET/g" \
             "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
           echo -e "${BRIGHT_GREEN}----- NEW ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
           break
@@ -289,6 +292,9 @@ if [ -f "$ENV_TEMPLATE_FILE" ]; then
       -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
       -e "s/\${SYNAPSE_MACAROON_SECRET_KEY}/$SYNAPSE_MACAROON_SECRET_KEY/g" \
       -e "s/\${SYNAPSE_FORM_SECRET}/$SYNAPSE_FORM_SECRET/g" \
+      -e "s/\${REGISTRATION_SHARED_SECRET}/$REGISTRATION_SHARED_SECRET/g" \
+      -e "s/\${SOLR_PASSWORD}/$SOLR_PASSWORD/g" \
+      -e "s/\${JWT_SECRET}/$JWT_SECRET/g" \
       "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
     echo -e "${BRIGHT_GREEN}----- ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
   fi
