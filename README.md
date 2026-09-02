@@ -16,6 +16,12 @@ bytEM is a secure, decentralized data management framework, sometimes describe  
 
 Learn more about our secure communication solutions for organizations and businesses.
 
+## Documentation
+
+- 📦 [BYTEM_INSTALL.md](https://github.com/liberbyte/bytEM-public/blob/d47e8fea4cf9c22b5b9df474071aacdbfa927ed8/BYTEM_INSTALL_REDEFINED.md)
+- 📖 [BYTEM_USER_GUIDE.md](BYTEM_USER_GUIDE.md) — how to use the app
+- 📚 [GLOSSARY.md](GLOSSARY.md) — dictionary of bytEM concepts (DEID, Class, Exchange, Federation, etc.)
+
 ## Quick Access
 
 Scan this QR code to access the bytEM repository:
@@ -24,8 +30,4 @@ Scan this QR code to access the bytEM repository:
 
 Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM-public)
 
-## Documentation
 
-- 📦 [BYTEM_INSTALL.md](https://github.com/liberbyte/bytEM-public/blob/d47e8fea4cf9c22b5b9df474071aacdbfa927ed8/BYTEM_INSTALL_REDEFINED.md)
-- 📖 [BYTEM_USER_GUIDE.md](BYTEM_USER_GUIDE.md) — how to use the app
-- 📚 [GLOSSARY.md](GLOSSARY.md) — dictionary of bytEM concepts (DEID, Class, Exchange, Federation, etc.)
