@@ -224,6 +224,20 @@ if [ -z "${FEDERATION_MARKET_LIST_URL:-}" ]; then
   info_message "Using default FEDERATION_MARKET_LIST_URL: $FEDERATION_MARKET_LIST_URL"
 fi
 
+if [ -z "${REGISTRATION_SHARED_SECRET:-}" ]; then
+  REGISTRATION_SHARED_SECRET=$(generate_secret)
+  info_message "Auto-generated REGISTRATION_SHARED_SECRET"
+fi
+if [ -z "${SOLR_PASSWORD:-}" ]; then
+  SOLR_PASSWORD=$(generate_password)
+  info_message "Auto-generated SOLR_PASSWORD"
+fi
+if [ -z "${JWT_SECRET:-}" ]; then
+  JWT_SECRET=$(generate_secret)
+  info_message "Auto-generated JWT_SECRET"
+fi
+
+
 header_message "Generating .env file:"
 
 # Generate .env from .env.template
