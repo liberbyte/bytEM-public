@@ -1,44 +1,124 @@
-# bytEM User Guide — Create and Exchange Data
+# bytEM User Guide
 
-> **Alpha software:** bytEM is under active development. Some features, commands, and screens may change between releases. If something in this guide does not match what you see in the application, use the in-app `help` command or contact your administrator.
+**Publish · Discover · Exchange structured data**
 
-This guide explains how to use bytEM to:
+> [!NOTE]
+> **Alpha software**
+>
+> bytEM is under active development. Some features, commands, and screens may change between releases. If something in this guide does not match what you see in the application, use the in-app `help` command or contact your administrator.
 
-* Supply data
-* Create Supply Rooms
-* Set a DEID and Class
-* Upload and publish data
-* Add Reference data
-* Create a Demand Room
-* Request data using Single-Click Exchange
-* Find and exchange Reference DEIDs
-* View exchanged data and results
+| Document | Details |
+| --- | --- |
+| **Product** | bytEM |
+| **Status** | Alpha |
+| **Purpose** | Publish, discover, request, and exchange structured data |
+| **Core identity** | DEID (Data Entity ID) |
+| **Guide version** | September 2026 |
+
+bytEM provides a structured workflow for supplying data and requesting it through federated **Supply Rooms** and **Demand Rooms**.
+
+This guide explains how to:
+
+- Supply data
+- Create Supply Rooms
+- Set a DEID and Class
+- Upload and publish data
+- Add Reference data
+- Create a Demand Room
+- Request data using Single-Click Exchange
+- Find and exchange Reference DEIDs
+- View exchanged data and results
 
 The examples in this guide use **water quality data**, but the same process can be used for other types of data, including:
 
-* Sales data
-* Sensor readings
-* Legal records
-* Geographic data
-* API data
+- Sales data
+- Sensor readings
+- Legal records
+- Geographic data
+- API data
 
 ---
 
-# Table of Contents
+## How bytEM Works
 
+```text
+SUPPLY                                              DEMAND
+
+Create Supply Room
+        │
+        ▼
+Set DEID + Class
+        │
+        ▼
+Add Data / References
+        │
+        ▼
+Update Supply
+        │
+        ▼
+Publish + Index ─────────► Discover ─────────► Find ─────────► Exchange
+                                                                  │
+                                                                  ▼
+                                                             Demand Room
+                                                                  │
+                                                                  ▼
+                                                          View Exchanged Data
+```
+
+At a high level:
+
+1. A publisher creates and prepares data in a **Supply Room**.
+2. bytEM indexes data that is ready and exchangeable.
+3. A user discovers the data through the **Data Index**.
+4. bytEM creates or reuses a **Demand Room** during Single-Click Exchange.
+5. Referenced DEIDs can be found and, where permissions allow, exchanged into the Demand Room.
+
+---
+
+## Quick Start
+
+### Publish data
+
+1. Create a **Supply Room**.
+2. Set its **DEID** and **Class**.
+3. Add a Dataset, API, HTML resource, or Reference.
+4. Click **Update Supply**.
+5. Confirm that **Supply**, **Register**, and **Exchangeable** are ready.
+
+### Access data
+
+1. Open the **Data Index**.
+2. Search or filter for the required data.
+3. Select **Access data →**.
+4. Enter your Matrix username and any other required information.
+5. Select **Single-Click Exchange**.
+6. Open the resulting **Demand Room**.
+7. View the exchanged data or follow any Reference DEIDs.
+
+---
+
+## Contents
+
+### Getting Started
 1. [What Is bytEM?](#1-what-is-bytem)
 2. [Core Concepts](#2-core-concepts)
 3. [Logging In](#3-logging-in)
 4. [Overview Page](#4-overview-page)
-5. [Step 1 — Decide What You Want to Supply](#5-step-1--decide-what-you-want-to-supply)
-6. [Step 2 — Create a Supply Room](#6-step-2--create-a-supply-room)
-7. [Step 3 — Set the DEID and Class](#7-step-3--set-the-deid-and-class)
-8. [Step 4 — Upload Your Data and Make It Exchangeable](#8-step-4--upload-your-data-and-make-it-exchangeable)
-9. [Step 5 — Add Reference Data](#9-step-5--add-reference-data)
+
+### Supplying Data
+5. [Choose What You Want to Supply](#5-choose-what-you-want-to-supply)
+6. [Create a Supply Room](#6-create-a-supply-room)
+7. [Set the DEID and Class](#7-set-the-deid-and-class)
+8. [Upload Data and Make It Exchangeable](#8-upload-data-and-make-it-exchangeable)
+9. [Add Reference Data](#9-add-reference-data)
+
+### Accessing and Exchanging Data
 10. [Create a Demand Room](#10-create-a-demand-room)
-11. [Step 6 — Request Data Using Single-Click Exchange](#11-step-6--request-data-using-single-click-exchange)
-12. [Step 7 — Find and Exchange Reference Data](#12-step-7--find-and-exchange-reference-data)
-13. [Step 8 — View Your Exchanged Data](#13-step-8--view-your-exchanged-data)
+11. [Request Data Using Single-Click Exchange](#11-request-data-using-single-click-exchange)
+12. [Find and Exchange Reference Data](#12-find-and-exchange-reference-data)
+13. [View Your Exchanged Data](#13-view-your-exchanged-data)
+
+### Reference
 14. [Terminal Commands Reference](#14-terminal-commands-reference)
 15. [Status Indicators](#15-status-indicators)
 16. [FAQ](#16-faq)
@@ -47,14 +127,18 @@ The examples in this guide use **water quality data**, but the same process can 
 
 ---
 
-# 1. What Is bytEM?
+# Getting Started
+
+## 1. What Is bytEM?
 
 bytEM is a platform for **sharing and exchanging data**.
 
 There are two main parts of the process:
 
-* **Supply** — You publish data that you want to make available.
-* **Demand** — You request and access data.
+| Process | Purpose |
+| --- | --- |
+| **Supply** | Publish data that you want to make available |
+| **Demand** | Request and access data |
 
 For example:
 
@@ -66,27 +150,35 @@ bytEM also supports **Reference data**, which allows you to include the DEID of 
 
 ---
 
-# 2. Core Concepts
+## 2. Core Concepts
 
 Before you start, it is useful to understand the following concepts.
 
-## Supply Room
+| Concept | Meaning |
+| --- | --- |
+| **Supply Room** | A room in which data is added and published |
+| **Demand Room** | A room used to access requested and exchanged data |
+| **DEID** | A unique Data Entity ID, usually expressed as a URL |
+| **Class** | A category describing what type of data is stored in a Supply Room |
+| **Reference** | A DEID pointing to another data entity that can later be found and exchanged |
+| **Find** | Retrieves information about a DEID before exchange |
+| **Exchange** | Brings data for a DEID into a Demand Room |
+
+### Supply Room
 
 A **Supply Room** is where you add and publish data.
 
 For example:
 
-* Water quality data
-* A dataset
-* API data
-* HTML content
-* Reference data
+- Water quality data
+- A dataset
+- API data
+- HTML content
+- Reference data
 
 Supply Rooms are shown with a 🟢 **green tag**.
 
----
-
-## Demand Room
+### Demand Room
 
 A **Demand Room** is used when data is requested.
 
@@ -94,9 +186,7 @@ It contains the requested and exchanged data.
 
 Demand Rooms are shown with a 🟣 **purple tag**.
 
----
-
-## DEID
+### DEID
 
 A **DEID (Data Entity ID)** is a unique identifier for a data entity.
 
@@ -110,9 +200,7 @@ https://waterworks.example/de/frankfurt/water-quality
 
 The DEID helps identify and find the data in bytEM.
 
----
-
-## Class
+### Class
 
 A **Class** is a category that describes what type of data is stored in a Supply Room.
 
@@ -124,9 +212,7 @@ water-quality
 
 The Class helps categorize and identify your data.
 
----
-
-## Reference Data
+### Reference Data
 
 A **Reference** contains the DEID of another data entity.
 
@@ -144,42 +230,39 @@ From there, you can:
 2. Review the available data.
 3. Exchange the data if you have the required permissions.
 
-> **Note:** The user must have a **power level above 51** to perform an exchange.
+> [!IMPORTANT]
+> The user must have a **power level above 51** to perform an exchange.
 
----
+### Supply and Demand
 
-## Supply and Demand
+#### Supply
 
-### Supply
-
-Supply is created manually.
-
-You:
+Supply is created manually. You:
 
 1. Create a Supply Room.
 2. Set the DEID and Class.
 3. Add your data.
 4. Update the supply.
 
-### Demand
+#### Demand
 
 Demand happens when a user requests data.
 
 bytEM creates or uses a Demand Room where the requested and exchanged data can be accessed.
 
+> [!TIP]
 > **Simple idea:** First, publish your data in a Supply Room. Then, request and access data through a Demand Room.
 
-> **Note:** You can also create a Demand Room manually. However, in the current version of bytEM, manually created Demand Rooms do not support exchanging data.
+> [!NOTE]
+> You can also create a Demand Room manually. However, in the current version of bytEM, manually created Demand Rooms do not support exchanging data.
 
 ---
 
-# 3. Logging In
+## 3. Logging In
 
-**Login URL:**
+**Login URL:** `https://bytem.alpha.cities.app/login`
 
-`https://bytem.alpha.cities.app/login`
-
-## Sign In
+### Sign In
 
 1. Open the login page in your browser.
 2. Leave the **Homeserver** value unchanged unless your administrator gives you a different value.
@@ -193,9 +276,7 @@ bytEM creates or uses a Demand Room where the requested and exchanged data can b
 
 After successfully logging in, you will be taken to the **Overview** page.
 
----
-
-## Create a New Matrix Account
+### Create a New Matrix Account
 
 If you do not have a Matrix account, click **Create one** below the login form.
 
@@ -212,7 +293,7 @@ After creating your account, log in using your new Matrix username and password.
 
 ---
 
-# 4. Overview Page
+## 4. Overview Page
 
 After logging in, you will see the **Overview** page.
 
@@ -220,62 +301,63 @@ After logging in, you will see the **Overview** page.
 
 The Overview page contains:
 
-* The **Terminal**
-* The **Data Rooms List**
-* Room management options
+- The **Terminal**
+- The **Data Rooms List**
+- Room management options
 
----
-
-## Data Rooms List
+### Data Rooms List
 
 The **Data Rooms List** shows the rooms available to you.
 
-| Tag       | Meaning                          |
-| --------- | -------------------------------- |
-| 🟢 Green  | Supply Room                      |
-| 🟣 Purple | Demand Room                      |
-| Grey      | You have not joined the room yet |
+| Tag | Meaning |
+| --- | --- |
+| 🟢 Green | Supply Room |
+| 🟣 Purple | Demand Room |
+| Grey | You have not joined the room yet |
 
 If you have not joined a room, click the room to see the available options. From there, you can join the room if you want to.
 
-> **Note:** Only administrators can join rooms.
+> [!NOTE]
+> Only administrators can join rooms.
 
 Click a room to open its context menu.
 
-| Option                  | Description                               |
-| ----------------------- | ----------------------------------------- |
-| **Open Data Room**      | Opens the room                            |
-| **Edit Data Room Name** | Changes the room name                     |
-| **Copy Room ID**        | Copies the Matrix Room ID                 |
-| **Leave Data Room**     | Removes you from the room                 |
-| **Delete Data Room**    | Permanently deletes the room and its data |
+| Option | Description |
+| --- | --- |
+| **Open Data Room** | Opens the room |
+| **Edit Data Room Name** | Changes the room name |
+| **Copy Room ID** | Copies the Matrix Room ID |
+| **Leave Data Room** | Removes you from the room |
+| **Delete Data Room** | Permanently deletes the room and its data |
 
-> **Note:** Room management options such as **Edit**, **Leave**, **Delete**, and **Join** are available only to administrators.
+> [!NOTE]
+> Room management options such as **Edit**, **Leave**, **Delete**, and **Join** are available only to administrators.
+
+### Buttons
+
+| Button | Action |
+| --- | --- |
+| **Create ▾** | Opens the Create Data Room dialog |
+| **Clear Terminal** | Clears the Terminal output |
+
+> [!NOTE]
+> The **Create** button is available only to administrators.
 
 ---
 
-## Buttons
+# Supplying Data
 
-| Button             | Action                            |
-| ------------------ | --------------------------------- |
-| **Create ▾**       | Opens the Create Data Room dialog |
-| **Clear Terminal** | Clears the Terminal output        |
-
-> **Note:** The **Create** button is available only to administrators.
-
----
-
-# 5. Step 1 — Decide What You Want to Supply
+## 5. Choose What You Want to Supply
 
 Before creating a Supply Room, decide what type of data you want to add.
 
 bytEM supports different supply types.
 
-| Type          | Use when...                                     |
-| ------------- | ----------------------------------------------- |
-| **Dataset**   | You have a file to upload                       |
-| **API**       | Your data is available through an API           |
-| **HTML**      | You want to provide HTML or web content         |
+| Type | Use when... |
+| --- | --- |
+| **Dataset** | You have a file to upload |
+| **API** | Your data is available through an API |
+| **HTML** | You want to provide HTML or web content |
 | **Reference** | You want to add the DEID of another data entity |
 
 ### Example
@@ -286,11 +368,11 @@ If you want to include another data entity using its DEID, you can use the **Ref
 
 ---
 
-# 6. Step 2 — Create a Supply Room
+## 6. Create a Supply Room
 
 A Supply Room is used to add and publish your data.
 
-## How to Create a Supply Room
+### How to Create a Supply Room
 
 1. Go to the **Overview** page.
 2. Click **Create ▾**.
@@ -298,14 +380,14 @@ A Supply Room is used to add and publish your data.
 4. Set **Room Base Type** to `supply`.
 5. Enter the room details.
 
-| Field                | Description                            |
-| -------------------- | -------------------------------------- |
-| **Room Base Type**   | Select `supply`                        |
-| **Data Room Name**   | Enter a clear name for your room       |
-| **Room Description** | Describe the data                      |
-| **Data Room Alias**  | Use the suggested alias if appropriate |
-| **Room Type**        | Select the appropriate room type       |
-| **DEID URL**         | Enter the identity for your data       |
+| Field | Description |
+| --- | --- |
+| **Room Base Type** | Select `supply` |
+| **Data Room Name** | Enter a clear name for your room |
+| **Room Description** | Describe the data |
+| **Data Room Alias** | Use the suggested alias if appropriate |
+| **Room Type** | Select the appropriate room type |
+| **DEID URL** | Enter the identity for your data |
 
 6. Click **Create**.
 
@@ -323,19 +405,17 @@ This room can contain water quality data for Frankfurt.
 
 ---
 
-# 7. Step 3 — Set the DEID and Class
+## 7. Set the DEID and Class
 
 After creating a Supply Room, set its **DEID** and **Class**.
 
 Open the Supply Room and select **Open Data Room**.
 
----
-
-## Set the DEID
+### Set the DEID
 
 You can view and set the DEID in different ways.
 
-### Option 1: Use the Terminal
+#### Option 1 — Use the Terminal
 
 Run:
 
@@ -345,21 +425,18 @@ room-deid --schema
 
 This displays the DEID template.
 
----
-
-### Option 2: Use the DEID Button
+#### Option 2 — Use the DEID Button
 
 Click the **room-deid** button above the Terminal.
 
 This also displays the DEID template.
 
-> **Note:** Options 1 and 2 are used to view the DEID template.
+> [!NOTE]
+> Options 1 and 2 are used to view the DEID template.
 
 <img width="1837" height="800" alt="DEID template" src="https://github.com/user-attachments/assets/bac9679d-9b77-41c3-bbf7-07e875ff2924" />
 
----
-
-### Option 3: Use the Command Tab
+#### Option 3 — Use the Command Tab
 
 1. Open the **Command** tab.
 2. Enter the DEID value.
@@ -367,9 +444,7 @@ This also displays the DEID template.
 
 <img width="1839" height="839" alt="Set DEID from Command tab" src="https://github.com/user-attachments/assets/d0f09d9a-5b50-4378-8f2c-afd6a6bfd6fb" />
 
----
-
-## DEID Example
+### DEID Example
 
 A DEID is usually a URL that identifies your data.
 
@@ -381,15 +456,14 @@ https://waterworks.example/de/frankfurt/water-quality
 
 Choose a meaningful URL that clearly describes your data.
 
-> **Note:** Once data has been uploaded to a Supply Room, its DEID cannot be changed. Make sure you set the correct DEID before uploading data.
+> [!IMPORTANT]
+> Once data has been uploaded to a Supply Room, its DEID cannot be changed. Make sure you set the correct DEID before uploading data.
 
----
-
-## Set the Class
+### Set the Class
 
 You can set the Class in the same way.
 
-### Option 1: Use the Terminal
+#### Option 1 — Use the Terminal
 
 Run:
 
@@ -399,21 +473,18 @@ room-class --schema
 
 This displays the Class template.
 
----
-
-### Option 2: Use the Class Button
+#### Option 2 — Use the Class Button
 
 Click the **room-class** button above the Terminal.
 
 This also displays the Class template.
 
-> **Note:** Options 1 and 2 are used to view the Class template.
+> [!NOTE]
+> Options 1 and 2 are used to view the Class template.
 
 <img width="1837" height="800" alt="Class template" src="https://github.com/user-attachments/assets/663c513c-1b22-4e8d-9217-59b1b86d4ea1" />
 
----
-
-### Option 3: Use the Command Tab
+#### Option 3 — Use the Command Tab
 
 1. Open the **Command** tab.
 2. Enter the Class details.
@@ -429,11 +500,11 @@ water-quality
 
 ---
 
-# 8. Step 4 — Upload Your Data and Make It Exchangeable
+## 8. Upload Data and Make It Exchangeable
 
 After setting the DEID and Class, you can add your data.
 
-## Option 1: Use the Terminal
+### Option 1 — Use the Terminal
 
 For a dataset, run:
 
@@ -443,9 +514,7 @@ load-supply dataset
 
 This allows you to load your dataset.
 
----
-
-## Use the Files Tab
+### Use the Files Tab
 
 1. Open the **Files** tab.
 2. Select **via File System**.
@@ -455,9 +524,7 @@ If available, you can use **Download from bytEM** to download data.
 
 <img width="1831" height="863" alt="Files tab" src="https://github.com/user-attachments/assets/f728aa01-5938-4f42-a486-57af3f70277a" />
 
----
-
-## Option 2: Load a Template
+### Option 2 — Load a Template
 
 In the **Data Exchange / Provision** section:
 
@@ -467,9 +534,7 @@ In the **Data Exchange / Provision** section:
 
 <img width="1831" height="863" alt="Load template" src="https://github.com/user-attachments/assets/f6ae5763-f98e-4634-afb0-ee0f37715c4c" />
 
----
-
-## Update the Supply
+### Update the Supply
 
 After adding your data:
 
@@ -478,9 +543,9 @@ After adding your data:
 
 The following indicators should become ready:
 
-* **Supply**
-* **Register**
-* **Exchangeable**
+- **Supply**
+- **Register**
+- **Exchangeable**
 
 <img width="1834" height="788" alt="Entity readiness" src="https://github.com/user-attachments/assets/ae39c95b-87db-4469-8c5f-72a327b4091c" />
 
@@ -488,13 +553,13 @@ Once your data is exchangeable and indexed, it can be requested by users.
 
 ---
 
-# 9. Step 5 — Add Reference Data
+## 9. Add Reference Data
 
 You can add a **Reference DEID** to your Supply Room.
 
 A Reference DEID identifies another data entity that can later be found and exchanged.
 
-## How to Add a Reference
+### How to Add a Reference
 
 1. Open your Supply Room.
 2. Load the **Reference** supply type.
@@ -513,7 +578,8 @@ The Reference DEID is now included in your supplied data.
 
 <img width="1841" height="794" alt="Add Reference data" src="https://github.com/user-attachments/assets/7441b431-79e6-4d91-aa22-f4f2596aa6d9" />
 
-> **Note:** The Reference DEID can be accessed later from the **Reference** tab inside the Demand Room.
+> [!NOTE]
+> The Reference DEID can be accessed later from the **Reference** tab inside the Demand Room.
 
 ### Example
 
@@ -527,9 +593,11 @@ This DEID identifies the data that you want to find and exchange later.
 
 ---
 
-# 10. Create a Demand Room
+# Accessing and Exchanging Data
 
-## How to Create a Demand Room
+## 10. Create a Demand Room
+
+### How to Create a Demand Room
 
 1. Go to the **Overview** page.
 2. Click **Create ▾**.
@@ -537,12 +605,12 @@ This DEID identifies the data that you want to find and exchange later.
 4. Set **Room Base Type** to `demand`.
 5. Enter the room details.
 
-| Field                | Description                            |
-| -------------------- | -------------------------------------- |
-| **Room Base Type**   | Select `demand`                        |
-| **Data Room Name**   | Enter a clear name for your room       |
-| **Room Description** | Describe the purpose of the room       |
-| **Data Room Alias**  | Use the suggested alias if appropriate |
+| Field | Description |
+| --- | --- |
+| **Room Base Type** | Select `demand` |
+| **Data Room Name** | Enter a clear name for your room |
+| **Room Description** | Describe the purpose of the room |
+| **Data Room Alias** | Use the suggested alias if appropriate |
 
 6. Click **Create**.
 
@@ -554,15 +622,17 @@ After creating the Demand Room, open it from the **Data Rooms List**.
 
 <img width="1837" height="506" alt="Demand Room details" src="https://github.com/user-attachments/assets/2df21bc0-ba9a-49a7-a8cf-156bdce02e4c" />
 
-> **Note:** In the current version, data cannot be exchanged from a Demand Room that is created manually. To exchange data, use the **Single-Click Exchange** flow described below.
+> [!IMPORTANT]
+> In the current version, data cannot be exchanged from a Demand Room that is created manually. To exchange data, use the **Single-Click Exchange** flow described below.
 
 ---
 
-# 11. Step 6 — Request Data Using Single-Click Exchange
+## 11. Request Data Using Single-Click Exchange
 
-> ⭐ **Recommended:** Use the **Data Index** to find and request publicly available data.
+> [!TIP]
+> **Recommended:** Use the **Data Index** to find and request publicly available data.
 
-## 1. Open the Data Index
+### Step 1 — Open the Data Index
 
 Open:
 
@@ -574,79 +644,61 @@ The **Data Index** displays publicly indexed data entities.
 
 You can browse, search, sort, and filter the available data.
 
----
-
-## Search for Data
+#### Search for Data
 
 Use the search bar to search by:
 
-* DEID
-* Name
-* Class
+- DEID
+- Name
+- Class
 
----
-
-## Filter and Sort Data
+#### Filter and Sort Data
 
 Depending on the available options, you can filter or sort data by:
 
-* Entity
-* Dataset
-* City
-* Category
-* Region
+- Entity
+- Dataset
+- City
+- Category
+- Region
 
----
-
-## Understand the Data Cards
+#### Understand the Data Cards
 
 Each data card may display information such as:
 
-* Data name
-* Exchange status
-* DEID
-* Data category
-* Domain
-* Source information
+- Data name
+- Exchange status
+- DEID
+- Data category
+- Domain
+- Source information
 
-When you find the data you need, click:
+When you find the data you need, click **Access data →**.
 
-**Access data →**
+### Step 2 — Select the Data You Want
 
----
-
-## 2. Select the Data You Want
-
-Click:
-
-**Access data →**
+Click **Access data →**.
 
 The Data Access page will open.
 
 Here, you can review information about the selected data.
 
----
-
-## 3. Enter Your Details
+### Step 3 — Enter Your Details
 
 Enter the required information.
 
-| Field               | Required? | Description                  |
-| ------------------- | --------- | ---------------------------- |
-| **Matrix Username** | Yes       | Your Matrix account username |
-| **Email**           | No        | Optional                     |
+| Field | Required? | Description |
+| --- | --- | --- |
+| **Matrix Username** | Yes | Your Matrix account username |
+| **Email** | No | Optional |
 
 Depending on the requested data, a location may also be required.
 
 <img width="1845" height="1005" alt="Data Access page" src="https://github.com/user-attachments/assets/82c791ef-b1b4-475b-b526-a7212352cfd2" />
 
-After entering the required information, click:
+After entering the required information, click **Single-Click Exchange**.
 
-**Single-Click Exchange**
-
----
-
-## 4. Wait for the Exchange Process
+### Step 4 — Wait for the Exchange Process
 
 bytEM will process your request.
 
@@ -654,72 +706,63 @@ The progress page shows the current status.
 
 During this process, bytEM may:
 
-* Create a Demand Room
-* Configure the requested data
-* Resolve the required supply data
-* Exchange the requested data
-* Process the results
-* Configure Demand Room permissions
-* Give your Matrix account access to the Demand Room
+- Create a Demand Room
+- Configure the requested data
+- Resolve the required supply data
+- Exchange the requested data
+- Process the results
+- Configure Demand Room permissions
+- Give your Matrix account access to the Demand Room
 
 <img width="1845" height="1005" alt="Exchange progress" src="https://github.com/user-attachments/assets/6d212f48-cf76-44c4-b0af-595329c8bb27" />
 
 Wait until the process is completed successfully.
 
-### Existing Demand Room
+#### Existing Demand Room
 
 If a Demand Room already exists for the requested data, bytEM may use the existing room instead of creating a new one.
 
----
-
-## 5. Open the Demand Room
+### Step 5 — Open the Demand Room
 
 After the exchange is complete, you will see a confirmation that your Demand Room is ready.
 
-Click:
-
-**Open Demand Room**
+Click **Open Demand Room**.
 
 <img width="1845" height="1005" alt="Demand Room ready" src="https://github.com/user-attachments/assets/232dd90f-3fa1-433b-8fbe-7428eeb5979d" />
 
----
-
-## 6. Log In
+### Step 6 — Log In
 
 If you are not already logged in, you will be redirected to the login page.
 
 Enter your:
 
-* Matrix Username
-* Password
+- Matrix Username
+- Password
 
 <img width="1845" height="1005" alt="Login page" src="https://github.com/user-attachments/assets/adbf50b7-2424-4530-a870-423d3ed85d04" />
 
 After successfully logging in, you will be redirected to the Demand Room.
 
-> **Note:** If you are already logged in, you may be taken directly to the Demand Room.
+> [!NOTE]
+> If you are already logged in, you may be taken directly to the Demand Room.
 
 If you do not have a Matrix account, click **Create one** on the login page.
 
 ---
 
-# 12. Step 7 — Find and Exchange Reference Data
+## 12. Find and Exchange Reference Data
 
 After accessing your Demand Room, you can find and exchange **Reference DEIDs** if the requested data contains the **Reference** supply type.
 
-## Step 1: Open the Demand Room
+### Step 1 — Open the Demand Room
 
 Open your 🟣 **Demand Room**.
 
-Click:
-
-**Open Data Room**
+Click **Open Data Room**.
 
 <img width="1845" height="1005" alt="Open Demand Room" src="https://github.com/user-attachments/assets/b4b6a722-50a6-48b6-9d3d-4dcb32f21e76" />
 
----
-
-## Step 2: Open the Reference Tab
+### Step 2 — Open the Reference Tab
 
 Inside the Demand Room, open the **Reference** tab.
 
@@ -727,15 +770,11 @@ The Reference tab displays the Reference DEIDs included in the requested data.
 
 <img width="1838" height="999" alt="Reference tab" src="https://github.com/user-attachments/assets/4e81f0e1-4802-4fd3-bda0-6c50d21c1a96" />
 
----
-
-## Step 3: Find the Reference DEID
+### Step 3 — Find the Reference DEID
 
 Before exchanging the data, you should first perform a **Find**.
 
-You can select the Reference DEID and use:
-
-**See Overview**
+You can select the Reference DEID and use **See Overview**.
 
 Or use the Terminal command:
 
@@ -751,11 +790,10 @@ find https://waterworks.example/de/frankfurt/water-quality
 
 The **Find** action shows information about the referenced data.
 
-> **Important:** Perform **Find** first before exchanging the Reference DEID.
+> [!IMPORTANT]
+> Perform **Find** first before exchanging the Reference DEID.
 
----
-
-## Step 4: Exchange the Reference DEID
+### Step 4 — Exchange the Reference DEID
 
 After finding the Reference DEID and reviewing the available data, you can perform the exchange.
 
@@ -775,15 +813,16 @@ This exchanges the data for the selected DEID into the Demand Room.
 
 <img width="1838" height="999" alt="Exchange Reference data" src="https://github.com/user-attachments/assets/19cde1bb-ed2e-4149-9dbc-d61ec42d9848" />
 
-### Permission Requirement
+#### Permission Requirement
 
-> **Important:** The exchange action requires the appropriate user permissions.
+> [!IMPORTANT]
+> The exchange action requires the appropriate user permissions.
 
 The user must have a **power level above 51** to perform the exchange.
 
 ---
 
-# 13. Step 8 — View Your Exchanged Data
+## 13. View Your Exchanged Data
 
 After the exchange is complete, open the **Exchanged** tab in your Demand Room.
 
@@ -791,29 +830,33 @@ After the exchange is complete, open the **Exchanged** tab in your Demand Room.
 
 The exchanged data may be displayed in different tabs depending on the type of data returned.
 
-| Tab            | Description                                |
-| -------------- | ------------------------------------------ |
-| **MetaData**   | Shows information about the exchanged data |
-| **Reference**  | Shows reference-related data               |
-| **Map**        | Shows geographic or location data          |
-| **HTML**       | Shows HTML or web content                  |
-| **API**        | Shows API-related data                     |
-| **bytEM Repo** | Shows available files or assets            |
-| **Echart**     | Shows a computed result as a chart         |
+| Tab | Description |
+| --- | --- |
+| **MetaData** | Shows information about the exchanged data |
+| **Reference** | Shows reference-related data |
+| **Map** | Shows geographic or location data |
+| **HTML** | Shows HTML or web content |
+| **API** | Shows API-related data |
+| **bytEM Repo** | Shows available files or assets |
+| **Echart** | Shows a computed result as a chart |
 
-> **Note:** Not every Demand Room displays all of these tabs. The available tabs depend on the type of data returned during the exchange.
+> [!NOTE]
+> Not every Demand Room displays all of these tabs. The available tabs depend on the type of data returned during the exchange.
 
-> **Note:** Some tabs may require additional user permissions.
+> [!NOTE]
+> Some tabs may require additional user permissions.
 
 ---
 
-# 14. Terminal Commands Reference
+# Reference
+
+## 14. Terminal Commands Reference
 
 The Terminal is available on:
 
-* The Overview page
-* Supply Rooms
-* Demand Rooms
+- The Overview page
+- Supply Rooms
+- Demand Rooms
 
 Type:
 
@@ -825,13 +868,12 @@ to see the commands available in your current location.
 
 <img width="1840" height="740" alt="Terminal help commands" src="https://github.com/user-attachments/assets/625b6687-ca8a-4047-addc-992199678e51" />
 
-> **Note:** The commands shown by `help` may depend on where you are in bytEM.
+> [!NOTE]
+> The commands shown by `help` may depend on where you are in bytEM.
 
----
+### Common Commands
 
-## Common Commands
-
-### Help
+#### Help
 
 ```bash
 help
@@ -839,7 +881,7 @@ help
 
 Shows the available commands.
 
-### Clear
+#### Clear
 
 ```bash
 clear
@@ -847,7 +889,7 @@ clear
 
 Clears the Terminal output.
 
-### Delete a Room
+#### Delete a Room
 
 ```bash
 delete-room --room-id <room_id>
@@ -855,16 +897,15 @@ delete-room --room-id <room_id>
 
 Deletes a room.
 
-> **Warning:** Deleting a room may permanently remove the room and its data.
+> [!WARNING]
+> Deleting a room may permanently remove the room and its data.
 
-> **Note:** Only admin can delete a room.
+> [!NOTE]
+> Only admin can delete a room.
 
+### Supply Room Commands
 
----
-
-## Supply Room Commands
-
-### View the DEID Template
+#### View the DEID Template
 
 ```bash
 room-deid --schema
@@ -872,7 +913,7 @@ room-deid --schema
 
 Displays the DEID template.
 
-### View the Class Template
+#### View the Class Template
 
 ```bash
 room-class --schema
@@ -880,7 +921,7 @@ room-class --schema
 
 Displays the Class template.
 
-### Load Supply Data
+#### Load Supply Data
 
 ```bash
 load-supply <supply-type>
@@ -897,7 +938,7 @@ html
 reference
 ```
 
-### Show Room Index Information
+#### Show Room Index Information
 
 ```bash
 show-room-index
@@ -905,7 +946,7 @@ show-room-index
 
 Shows the room's index information.
 
-### Set or View Room Location
+#### Set or View Room Location
 
 ```bash
 room-location --schema
@@ -913,11 +954,9 @@ room-location --schema
 
 Shows the location template.
 
----
+### Demand Room Commands
 
-## Demand Room Commands
-
-### Find a DEID
+#### Find a DEID
 
 ```bash
 find <deid_url>
@@ -925,9 +964,10 @@ find <deid_url>
 
 Finds information for a specific DEID.
 
+> [!TIP]
 > **Recommended:** Perform **Find** before attempting to exchange a Reference DEID.
 
-### Exchange Data
+#### Exchange Data
 
 ```bash
 exchange-data <deid_url>
@@ -935,20 +975,21 @@ exchange-data <deid_url>
 
 Exchanges the data for the specified DEID.
 
-> **Permission Requirement:** The user must have a **power level above 51** to perform an exchange.
+> [!IMPORTANT]
+> **Permission requirement:** The user must have a **power level above 51** to perform an exchange.
 
 ---
 
-# 15. Status Indicators
+## 15. Status Indicators
 
 The **Entity Readiness** panel uses indicators to show whether your data is ready.
 
 Common statuses include:
 
-| Status           | Meaning                           |
-| ---------------- | --------------------------------- |
-| **Supply**       | The supply data is available      |
-| **Register**     | The data has been registered      |
+| Status | Meaning |
+| --- | --- |
+| **Supply** | The supply data is available |
+| **Register** | The data has been registered |
 | **Exchangeable** | The data is ready to be exchanged |
 
 When the required indicators are ready, your data can be indexed and requested.
@@ -957,33 +998,27 @@ When the required indicators are ready, your data can be indexed and requested.
 
 ---
 
-# 16. FAQ
+## 16. FAQ
 
-## Do I need to write code to use bytEM?
+### Do I need to write code to use bytEM?
 
 No. Most actions can be performed using the bytEM interface.
 
 The Terminal is also available for users who prefer using commands.
 
----
-
-## What is the difference between a Supply Room and a Demand Room?
+### What is the difference between a Supply Room and a Demand Room?
 
 A **Supply Room** is used to publish data.
 
 A **Demand Room** is used to access requested and exchanged data.
 
----
-
-## What is a Reference DEID?
+### What is a Reference DEID?
 
 A Reference DEID identifies another data entity.
 
 It is added using the **Reference** supply type and can later be found and exchanged from a Demand Room.
 
----
-
-## Do I need to perform Find before Exchange?
+### Do I need to perform Find before Exchange?
 
 Yes.
 
@@ -994,9 +1029,7 @@ The recommended process is:
 3. Review the available information.
 4. Perform **Exchange** if you have the required permissions.
 
----
-
-## Can every user exchange data?
+### Can every user exchange data?
 
 No.
 
@@ -1004,9 +1037,7 @@ The user must have the required permissions.
 
 According to the current requirement, the user must have a **power level above 51** to perform an exchange.
 
----
-
-## Can I change my DEID after uploading data?
+### Can I change my DEID after uploading data?
 
 No.
 
@@ -1016,21 +1047,19 @@ Make sure you set the correct DEID before uploading your data.
 
 ---
 
-# 17. Troubleshooting
+## 17. Troubleshooting
 
-## I Cannot Log In
+### I Cannot Log In
 
 Check:
 
-* Your username
-* Your password
-* Your Homeserver
+- Your username
+- Your password
+- Your Homeserver
 
 If the problem continues, contact your administrator.
 
----
-
-## I Cannot Perform an Exchange
+### I Cannot Perform an Exchange
 
 Check your user permissions.
 
@@ -1038,19 +1067,15 @@ The exchange action requires a user power level above **51**.
 
 If your power level is not high enough, contact the room administrator.
 
----
-
-## I Cannot Find the Reference Data
+### I Cannot Find the Reference Data
 
 Check that:
 
-* The Reference DEID is correct.
-* You performed the **Find** action correctly.
-* The referenced data is available and accessible.
+- The Reference DEID is correct.
+- You performed the **Find** action correctly.
+- The referenced data is available and accessible.
 
----
-
-## My Data Does Not Appear
+### My Data Does Not Appear
 
 Try the following:
 
@@ -1059,9 +1084,7 @@ Try the following:
 3. Check the Supply status.
 4. Confirm that **Update Supply** was completed.
 
----
-
-## My DEID Is Locked
+### My DEID Is Locked
 
 This can happen after data has been uploaded.
 
@@ -1069,9 +1092,9 @@ If you need a different DEID, you may need to create a new Supply Room.
 
 ---
 
-# 18. Getting Help
+## 18. Getting Help
 
-## Use the Terminal
+### Use the Terminal
 
 Type:
 
@@ -1081,7 +1104,7 @@ help
 
 to see the commands available in your current location.
 
-## Contact Your Administrator
+### Contact Your Administrator
 
 If you need additional help, contact your bytEM administrator or your organisation's support channel.
 
