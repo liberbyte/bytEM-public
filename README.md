@@ -1,33 +1,49 @@
+# bytEM public deployment
 
+This repository installs bytEM from the Docker images published by the main
+repository's GitHub Actions workflow. It does not build application source.
 
+The current stack has one frontend: `bytem-pwa`. The retired `bytem-app`
+container is replaced by `bytem-nginx`, which provides TLS, reverse proxying,
+Matrix discovery, and federation.
 
-# bytEM-public
-bytEM public repo - bytEM from Liberbyte GmbH 
+## Install
 
+Requirements:
 
+- Linux host with Docker Engine and the `docker compose` plugin
+- DNS records for both generated hostnames pointing to the host
+- inbound TCP ports 80, 443, and 8448
 
-## About bytEM
+```bash
+git clone https://github.com/liberbyte/bytEM-public.git
+cd bytEM-public
+chmod +x env_setup.sh certbot.sh install.sh whitelist-sync.sh scripts/*.sh
+./env_setup.sh
+./install.sh
+```
 
-bytEM is a secure, decentralized data management framework, sometimes describe  as “dmail i.e. email for data” easily enabling sharing, exchanging and also monetizing the data, Developed by [Liberbyte GmbH](https://liberbyte.com).
+`env_setup.sh` asks for two distinct accounts:
 
-- [bytEM Product Overview Website](https://liberbyte.com/bytEM.html)
+- a test/admin username and password for interactive login
+- a bot username and password for the backend services
 
-- [Contact Us for more detailed information on "why bytEM?" ](https://liberbyte.com/contact)
+Do not reuse one account's credentials for the other. The bot and backend log
+in and refresh their bot access token at runtime; no access token needs to be
+copied into `.env`.
 
-Learn more about our secure communication solutions for organizations and businesses.
+For unattended configuration, supply the required variables explicitly:
 
-## Documentation
+```bash
+DOMAIN_NAME=example.com \
+SUBDOMAIN_PREFIX=bm4 \
+TEST_USERNAME=test \
+TEST_PASSWORD='test-secret' \
+BOT_USERNAME=bot \
+BOT_PASSWORD='bot-secret' \
+./env_setup.sh --non-interactive
+```
 
-- 📦 [BYTEM_INSTALL.md](https://github.com/liberbyte/bytEM-public/blob/d47e8fea4cf9c22b5b9df474071aacdbfa927ed8/BYTEM_INSTALL_REDEFINED.md)
-- 📖 [BYTEM_USER_GUIDE.md](BYTEM_USER_GUIDE.md) — how to use the app
-- 📚 [GLOSSARY.md](GLOSSARY.md) — dictionary of bytEM concepts (DEID, Class, Exchange, Federation, etc.)
-
-## Quick Access
-
-Scan this QR code to access the bytEM repository:
-
-![bytEM Repository QR Code](documentation_screenshots/bytem_repo_qr.png)
-
-Or visit: [github.com/liberbyte/bytEM-public](https://github.com/liberbyte/bytEM-public)
-
-
+See [BYTEM_INSTALL.md](BYTEM_INSTALL.md) for upgrades, TLS, verification, and
+troubleshooting. Keep `.env`, `certbot/`, and all `bytem-*` Docker volumes backed
+up; they contain credentials and persistent service data.

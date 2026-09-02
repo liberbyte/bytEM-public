@@ -1,175 +1,30 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Get script directory and set relative paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# Validate we're in the correct directory (should contain docker-compose file)
-if [[ ! -f "$SCRIPT_DIR/docker-compose.yaml" ]]; then
-    echo "❌ Error: Script must be run from bytEM installation directory"
-    echo "Current directory: $SCRIPT_DIR"
-    echo "Please run from the directory containing docker-compose.yaml"
+[ -f .env ] || { echo "ERROR: .env is missing. Run ./env_setup.sh first." >&2; exit 1; }
+
+echo "Regenerating Synapse configuration from the configured market list..."
+docker compose --env-file .env up -d --force-recreate bytem-synapse
+
+echo "Waiting for Synapse..."
+deadline=$((SECONDS + 120))
+until docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' bytem-synapse 2>/dev/null | grep -qx healthy; do
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    docker compose logs --tail 100 bytem-synapse
+    echo "ERROR: Synapse did not become healthy." >&2
     exit 1
-fi
-
-# Load environment variables from .env
-if [[ -f "$SCRIPT_DIR/.env" ]]; then
-    source "$SCRIPT_DIR/.env"
-    echo "✅ Loaded configuration from .env"
-else
-    echo "❌ Error: .env file not found. Please run env_setup.sh first."
-    exit 1
-fi
-
-# Validate MARKET_LIST is set
-if [[ -z "${MARKET_LIST:-}" ]]; then
-    echo "❌ Error: MARKET_LIST not found in .env. Please run env_setup.sh first."
-    exit 1
-fi
-
-echo "✅ Using market list URL: $MARKET_LIST"
-
-# Local homeserver.yaml path
-HOMESERVER_PATH="$SCRIPT_DIR/generated_config_files/synapse_config/homeserver.yaml"
-
-# Nginx config path - dynamically find the config file
-NGINX_CONFIG_DIR="$SCRIPT_DIR/generated_config_files/nginx_config"
-NGINX_CONFIG_PATH=$(find "$NGINX_CONFIG_DIR" -name "bytem.*.conf" | head -1)
-
-# Verify required files exist
-if [[ ! -f "$HOMESERVER_PATH" ]]; then
-    echo "❌ Error: homeserver.yaml not found at $HOMESERVER_PATH"
-    exit 1
-fi
-
-if [[ -z "$NGINX_CONFIG_PATH" || ! -f "$NGINX_CONFIG_PATH" ]]; then
-    echo "❌ Error: nginx config not found in $NGINX_CONFIG_DIR"
-    echo "Looking for files matching pattern: bytem.*.conf"
-    ls -la "$NGINX_CONFIG_DIR" 2>/dev/null || echo "Directory not found"
-    exit 1
-fi
-
-echo "✅ Configuration files found"
-echo "✅ Using nginx config: $NGINX_CONFIG_PATH"
-
-# --- Fetch domains ---
-RESPONSE=$(curl -sS -w "\n%{http_code}" "$MARKET_LIST" 2>/dev/null || echo "")
-HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-BODY=$(echo "$RESPONSE" | sed '$d')
-
-if [[ "$HTTP_CODE" == "404" ]] || [[ -z "$BODY" ]]; then
-    echo "⚠️  Market list URL returned $HTTP_CODE or empty, skipping whitelist update"
-    echo "   Your instance will use default federation (matrix.org + self)"
-    SKIP_WHITELIST=true
-else
-    DOMAINS=$(echo "$BODY" | jq -r '.[]' 2>/dev/null || echo "")
-    if [[ -z "$DOMAINS" ]]; then
-        echo "⚠️  Could not parse market list, skipping whitelist update"
-        SKIP_WHITELIST=true
-    else
-        echo "✅ Registry domains fetched successfully"
-        SKIP_WHITELIST=false
-    fi
-fi
-
-if [[ "$SKIP_WHITELIST" != "true" ]]; then
-# --- Filter domains to match current server's domain ---
-CONFIG_FILENAME=$(basename "$NGINX_CONFIG_PATH")
-FULL_DOMAIN=$(echo "$CONFIG_FILENAME" | sed 's/^bytem\.//' | sed 's/\.conf$//')
-CURRENT_DOMAIN=$(echo "$FULL_DOMAIN" | sed 's/^[^.]*\.//')
-
-echo "✅ Current domain: $CURRENT_DOMAIN"
-
-# --- Backup original file ---
-cp "$HOMESERVER_PATH" "$HOMESERVER_PATH.bak"
-
-# --- Clean up existing whitelist ---
-sed -i '/^federation_domain_whitelist:/d' "$HOMESERVER_PATH"
-sed -i '/^  - matrix\./d' "$HOMESERVER_PATH"
-
-# --- Add whitelist section ---
-sed -i '/^enable_federation: true$/a\
-federation_domain_whitelist:' "$HOMESERVER_PATH"
-
-# --- Add each domain ---
-for domain in $DOMAINS; do
-  sed -i "/^federation_domain_whitelist:$/a\\  - matrix.$domain" "$HOMESERVER_PATH"
+  fi
+  sleep 3
 done
 
-echo "✅ Whitelist updated with all market domains"
+echo "Active federation whitelist:"
+docker exec bytem-synapse awk '
+  /^federation_domain_whitelist:/ {printing=1}
+  printing && /^[^[:space:]#]/ && !/^federation_domain_whitelist:/ {exit}
+  printing {print}
+' /data/homeserver.yaml
 
-# --- Get server IP ---
-SERVER_IP=$(curl -4 -s ifconfig.me)
-echo "✅ Current server IP: $SERVER_IP"
-
-# --- Update nginx config with Solr access restrictions ---
-# Block public access to /solr, allow only federation and internal access
-
-cp "$NGINX_CONFIG_PATH" "$NGINX_CONFIG_PATH.bak"
-
-# Remove existing allow/deny directives in /solr location
-sed -i '/[[:space:]]*location \/solr\/ {/,/}/{/allow\|deny/d}' "$NGINX_CONFIG_PATH"
-
-# Add all allow rules first
-sed -i "/[[:space:]]*location \/solr\/ {/a\\
-        # Allow internal container access\\
-        allow 127.0.0.1;\\
-        allow ::1;\\
-        allow 172.16.0.0/12;\\
-        allow 10.0.0.0/8;" "$NGINX_CONFIG_PATH"
-
-# Add federation server IPs
-echo "✅ Adding federation server IPs to Solr whitelist..."
-for domain in $DOMAINS; do
-    DOMAIN_IP=$(dig +short "$domain" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
-    if [[ -n "$DOMAIN_IP" ]]; then
-        sed -i "/allow 10.0.0.0\/8;/a\\        allow $DOMAIN_IP;  # $domain" "$NGINX_CONFIG_PATH"
-        echo "✅ Added Solr access for $domain ($DOMAIN_IP)"
-    else
-        echo "⚠️  Could not resolve IP for $domain"
-    fi
-done
-
-# Add single deny all at the very end (after all allow rules)
-sed -i "/location \/solr\/ {/,/proxy_pass/{/proxy_pass/i\\        # Block all other public access\\
-        deny all;
-}" "$NGINX_CONFIG_PATH"
-
-echo "✅ Solr access restricted: Federation servers allowed, public access blocked"
-fi
-
-# --- Check if containers are running before reloading ---
-check_container_running() {
-    local container_name=$1
-    if ! docker ps --filter "name=$container_name" --filter "status=running" | grep -q "$container_name"; then
-        echo "❌ Error: Container $container_name is not running. Please start it with: docker-compose up -d $container_name"
-        exit 1
-    fi
-}
-
-check_container_running bytem-app
-check_container_running bytem-synapse
-
-# --- Reload bytem-app container ---
-docker exec bytem-app nginx -s reload
-echo "✅ Nginx reloaded in bytem-app container"
-
-# --- Reload synapse container ---
-docker kill -s HUP bytem-synapse
-echo "✅ Synapse configuration reloaded"
-
-# Set rate limit override for admin/bot
-echo "Setting rate limit override..."
-curl --location "https://${MATRIX_DOMAIN}/_synapse/admin/v1/users/${MATRIX_ADMIN_USER}/override_ratelimit" \
---header 'Content-Type: application/json' \
---header "Authorization: Bearer ${BOT_USER_ACCESS_TOKEN}" \
---data '{
-    "messages_per_second": 0,
-    "burst_count": 0
-}' > /dev/null 2>&1
-
-# Final container restart
-echo "Final container restart..."
-docker restart bytem-synapse bytem-bot bytem-be bytem-app > /dev/null 2>&1
-echo "✅ bytEM installation completed successfully"
-
+echo "Whitelist refreshed. It is now generated by the Synapse image; no host config is edited."

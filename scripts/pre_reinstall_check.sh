@@ -1,62 +1,51 @@
-#!/bin/bash
-
-# Pre-reinstall state check for bytEM stack
-# Usage: ./scripts/pre_reinstall_check.sh > /tmp/pre-reinstall-state.txt
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-OUTFILE="/tmp/pre-reinstall-state.txt"
-DATE=$(date '+%b %d, %Y')
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "$DEPLOY_DIR"
 
-echo "========================================"
-echo "PRE-REINSTALL STATE ($DATE)"
-echo "========================================"
+[ -f .env ] || { echo "ERROR: .env is missing." >&2; exit 1; }
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
+echo "PRE-UPGRADE STATE ($(date -Iseconds))"
 echo
-echo "1. SSL CERTIFICATES:"
-# Discover domains from .env.bytem if available, else scan certbot directory
-if [ -f .env.bytem ]; then
-  _BYTEM_DOMAIN=$(grep '^BYTEM_DOMAIN=' .env.bytem | cut -d= -f2 | head -1)
-  _MATRIX_DOMAIN=$(grep '^MATRIX_DOMAIN=' .env.bytem | cut -d= -f2 | head -1)
-  _DOMAINS="${_BYTEM_DOMAIN} ${_MATRIX_DOMAIN}"
-else
-  _DOMAINS=$(ls certbot/conf/live/ 2>/dev/null | grep -v README | tr '\n' ' ')
-fi
-for domain in ${_DOMAINS}; do
-  cert_path="certbot/conf/live/$domain/fullchain.pem"
-  if [ -f "$cert_path" ]; then
-    mod_date=$(stat -c %y "$cert_path" | cut -d'.' -f1)
-    echo "   ✅ $domain ($mod_date)"
+echo "TLS certificates:"
+for domain in "$DOMAIN_NAME" "$MATRIX_SERVER_NAME"; do
+  certificate="certbot/conf/live/${domain}/fullchain.pem"
+  if [ -f "$certificate" ]; then
+    echo "  OK  $domain ($(stat -c %y "$certificate" | cut -d. -f1))"
   else
-    echo "   ❌ $domain (missing)"
+    echo "  MISSING  $domain"
   fi
 done
+
 echo
-echo "2. DOCKER VOLUMES:"
-docker volume ls --format '{{.Name}}' | grep '^bytem-' | while read vol; do
-  vol_path=$(docker volume inspect "$vol" --format '{{.Mountpoint}}' 2>/dev/null || echo "")
-  size=$([ -n "$vol_path" ] && sudo du -sh "$vol_path" 2>/dev/null | awk '{print $1}' || echo "unknown")
-  echo "   ✅ $vol (${size:-unknown})"
+echo "Persistent Docker volumes:"
+for volume in bytem-rabbitmq-data bytem-rabbitmq-log bytem-synapse-db-data bytem-synapse-data bytem-solr-data; do
+  if docker volume inspect "$volume" >/dev/null 2>&1; then
+    echo "  OK  $volume"
+  else
+    echo "  MISSING  $volume"
+  fi
 done
+
 echo
-echo "3. MATRIX USERS:"
-user=$(sudo docker exec bytem-synapse-db psql -U synapse -d synapse -t -c "SELECT name FROM users LIMIT 1;" | xargs)
-if [[ "$user" == @* ]]; then
-  echo "   ✅ $user"
-else
-  echo "   ❌ No user found"
+echo "Containers:"
+docker compose ps
+
+if docker compose ps --status running --services | grep -qx bytem-synapse; then
+  echo
+  echo "Synapse federation whitelist:"
+  docker exec bytem-synapse awk '
+    /^federation_domain_whitelist:/ {printing=1}
+    printing && /^[^[:space:]#]/ && !/^federation_domain_whitelist:/ {exit}
+    printing {print}
+  ' /data/homeserver.yaml
 fi
+
 echo
-echo "4. WHITELIST:"
-whitelist_file="generated_config_files/synapse_config/homeserver.yaml"
-_WL_PATTERN=$([ -n "${_MATRIX_DOMAIN:-}" ] && echo "$_MATRIX_DOMAIN" || echo "matrix\.bytem\.")
-grep -A 5 'federation_domain_whitelist:' "$whitelist_file" | grep -E "matrix.org|${_WL_PATTERN}" | sed 's/- //' | while read wl; do
-  echo "   ✅ $wl"
-done
-echo
-echo "5. DATABASE:"
-db_size=$(sudo docker exec bytem-synapse-db du -sh /var/lib/postgresql/data | awk '{print $1}')
-echo "   ✅ Size: $db_size"
-echo
-echo "6. DOCKER ROOT:"
-docker_root=$(docker info --format '{{.DockerRootDir}}')
-echo "   ✅ $docker_root"
+echo "The upgrade command preserves these volumes and certificates: ./install.sh"

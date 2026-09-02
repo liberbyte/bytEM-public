@@ -1,245 +1,98 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Define colors
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BRIGHT_GREEN='\033[1;32m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-header_message() {
-  echo -e "${CYAN}==========================================${NC}"
-  echo -e "${CYAN}$1${NC}"
-  echo -e "${CYAN}==========================================${NC}"
-}
+log() { echo -e "${CYAN}$(date +'%Y-%m-%d %H:%M:%S')${NC} $*"; }
+warn() { echo -e "${YELLOW}$*${NC}"; }
+die() { echo -e "${RED}ERROR: $*${NC}" >&2; exit 1; }
 
-# Source the .env file
-set +u
+command -v docker >/dev/null 2>&1 || die "Docker is not installed."
+docker compose version >/dev/null 2>&1 || die "The Docker Compose plugin is not installed."
+[ -f .env ] || die ".env is missing. Run ./env_setup.sh first."
+
+set -a
+# shellcheck disable=SC1091
 source .env
-set -u
+set +a
 
-# Export key variables that docker compose config needs
-export NODE_ENV CONFIG_TYPE API_HOST MATRIX_SERVER EXCH_SERVER DOMAIN_NAME MATRIX_SERVER_NAME
+required=(DOMAIN_NAME MATRIX_SERVER_NAME TEST_USERNAME TEST_PASSWORD MATRIX_ADMIN_USERNAME MATRIX_ADMIN_PASSWORD BOT_USERNAME BOT_PASSWORD)
+for variable_name in "${required[@]}"; do
+  [ -n "${!variable_name:-}" ] || die "$variable_name is missing from .env. Re-run ./env_setup.sh."
+done
+[ "$MATRIX_ADMIN_USERNAME" != "$BOT_USERNAME" ] || \
+  die "The test/admin and bot usernames are mixed together. Re-run ./env_setup.sh --force and enter separate accounts."
+[ "$MATRIX_ADMIN_PASSWORD" != "$BOT_PASSWORD" ] || \
+  die "The test/admin and bot passwords must be different. Re-run ./env_setup.sh --force."
 
-# Variables
-CONFIG_DIR="generated_config_files/"
-SYNAPSE_CONTAINER_NAME="bytem-synapse"
-ADMIN_USERNAME=${BOT_USERNAME}
-ADMIN_PASSWORD=${BOT_PASSWORD}
-MATRIX_URL="http://bytem-synapse:8008"
-RESTART_CONTAINER="bytem-be bytem-bot bytem-app"
+log "Validating deployment configuration"
+docker compose --env-file .env config --quiet
 
-# Helper function for logging
-log() {
-    echo "$(date +'%Y-%m-%d %H:%M:%S') - $1"
-}
+log "Pulling the latest published bytEM images"
+docker compose --env-file .env pull
 
-header_message "Changing the permissions of ${CONFIG_DIR}"
-
-log "Setting ownership for ${CONFIG_DIR}..."
-sudo chown -R 991:991 "${CONFIG_DIR}"
-
-header_message "Ensuring clean Docker environment"
-
-log "Stopping and removing all containers and networks..."
-sudo docker compose down --remove-orphans 2>/dev/null || true
-
-header_message "Removing Docker images"
-
-log "Removing all Docker images..."
-sudo docker image prune -a -f
-
-header_message "Pulling latest Docker images"
-
-log "Pulling images from Docker Hub..."
-sudo docker compose --env-file .env pull
-
-header_message "Ensuring nginx template is available"
-
-log "Checking for default.conf.template in nginx config directory..."
-NGINX_CONFIG_DIR="generated_config_files/nginx_config"
-TEMPLATE_DEST="${NGINX_CONFIG_DIR}/default.conf.template"
-
-if [ ! -f "$TEMPLATE_DEST" ]; then
-  log "Extracting default.conf.template from bytem-app image..."
-  docker create --name tmp-nginx-tpl liberbyteadmin/bytem:nginx >/dev/null 2>&1 || true
-  docker cp tmp-nginx-tpl:/etc/nginx/conf.d/default.conf.template "$TEMPLATE_DEST"
-  docker rm tmp-nginx-tpl >/dev/null 2>&1 || true
-  log "Template saved to $TEMPLATE_DEST"
-else
-  log "Template already exists at $TEMPLATE_DEST"
+# Releases before the Synapse 1.159 upgrade bind-mounted this host directory
+# into /data. Preserve its signing key and media when moving to the named volume.
+legacy_synapse_data="$SCRIPT_DIR/generated_config_files/synapse_config"
+if [ -d "$legacy_synapse_data" ] && [ -n "$(find "$legacy_synapse_data" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+  docker volume create bytem-synapse-data >/dev/null
+  if ! docker run --rm --entrypoint sh \
+      -v bytem-synapse-data:/data:ro \
+      liberbyteadmin/bytem:synapse \
+      -c 'find /data -mindepth 1 -maxdepth 1 -print -quit | grep -q .'; then
+    log "Migrating legacy Synapse signing keys and media into bytem-synapse-data"
+    docker run --rm --entrypoint sh \
+      -v "$legacy_synapse_data:/legacy:ro" \
+      -v bytem-synapse-data:/data \
+      liberbyteadmin/bytem:synapse \
+      -c 'cp -a /legacy/. /data/'
+  fi
 fi
 
-header_message "Building and starting the bytem docker stack"
+if [ ! -f "certbot/conf/live/${DOMAIN_NAME}/fullchain.pem" ] || \
+   [ ! -f "certbot/conf/live/${MATRIX_SERVER_NAME}/fullchain.pem" ]; then
+  warn "TLS certificates are missing; starting certificate setup."
+  "$SCRIPT_DIR/certbot.sh"
+fi
 
-log "Starting Docker containers..."
-MAX_RETRIES=3
-RETRY_DELAY=20
-for i in $(seq 1 $MAX_RETRIES); do
-    if sudo docker compose up -d; then
-        log "Docker containers started successfully."
-        break
-    elif [[ $i -eq $MAX_RETRIES ]]; then
-        log "Failed to start Docker containers after ${MAX_RETRIES} attempts."
-        exit 1
-    else
-        log "Retrying Docker startup in ${RETRY_DELAY} seconds..."
-        sleep $RETRY_DELAY
-    fi
+log "Starting or upgrading the bytEM stack"
+docker compose --env-file .env up -d --remove-orphans
+
+log "Waiting for service health checks"
+deadline=$((SECONDS + 240))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  unhealthy=$(docker compose ps --all --format json | \
+    grep -c '"Health":"unhealthy"\|"State":"exited"\|"State":"dead"' || true)
+  starting=$(docker compose ps --all --format json | \
+    grep -c '"Health":"starting"\|"State":"created"\|"State":"restarting"' || true)
+  if [ "$unhealthy" -gt 0 ]; then
+    docker compose ps
+    die "One or more services failed. Inspect them with: docker compose logs <service>"
+  fi
+  if [ "$starting" -eq 0 ]; then
+    break
+  fi
+  sleep 5
 done
 
-header_message "Waiting for the bytem containers to start..."
+docker compose ps
 
-log "Waiting for services to initialize..."
-sleep 60
-
-# Wait for Matrix server to be ready
-log "Checking Matrix server readiness..."
-MAX_WAIT=300  # 5 minutes
-WAIT_TIME=0
-while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    # First check if container is running
-    if ! sudo docker ps | grep -q "${SYNAPSE_CONTAINER_NAME}"; then
-        log "ERROR: ${SYNAPSE_CONTAINER_NAME} container is not running!"
-        log "Checking container status and logs..."
-        sudo docker ps -a | grep "${SYNAPSE_CONTAINER_NAME}"
-        log "Recent logs from ${SYNAPSE_CONTAINER_NAME}:"
-        sudo docker logs --tail 20 "${SYNAPSE_CONTAINER_NAME}" 2>&1 || true
-        log "Please check the logs above for errors. Common issues:"
-        log "  1. Database password mismatch - ensure POSTGRES_PASSWORD matches SYNAPSE_POSTGRES_PASSWORD in .env"
-        log "  2. Database not ready - synapse container may need more time"
-        exit 1
-    fi
-    
-    if sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -s http://localhost:8008/_matrix/client/versions >/dev/null 2>&1; then
-        log "Matrix server is ready!"
-        break
-    fi
-    log "Matrix server not ready yet, waiting... (${WAIT_TIME}s/${MAX_WAIT}s)"
-    sleep 10
-    WAIT_TIME=$((WAIT_TIME + 10))
-done
-
-if [ $WAIT_TIME -ge $MAX_WAIT ]; then
-    log "ERROR: Matrix server did not become ready within ${MAX_WAIT} seconds!"
-    log "Recent logs from ${SYNAPSE_CONTAINER_NAME}:"
-    sudo docker logs --tail 30 "${SYNAPSE_CONTAINER_NAME}" 2>&1 || true
-    exit 1
-fi
-
-header_message "Registering new Matrix user and getting bot token"
-
-log "Waiting for Matrix server to be ready..."
-sleep 30
-
-# Extract bot username from BOT_USER_ID (remove @ and domain)
-BOT_USERNAME=$(echo "${BOT_USER_ID}" | sed 's/@\([^:]*\):.*/\1/')
-log "Bot username extracted: ${BOT_USERNAME}"
-
-log "Registering bot user..."
-if sudo docker exec "${SYNAPSE_CONTAINER_NAME}" register_new_matrix_user -a -c data/homeserver.yaml -u "${BOT_USERNAME}" -p "${BOT_PASSWORD}" "${MATRIX_URL}"; then
-    log "Bot user ${BOT_USERNAME} registered successfully."
+if [ "$SECONDS" -ge "$deadline" ]; then
+  warn "Some health checks are still starting. Follow them with: docker compose ps"
 else
-    log "Bot user ${BOT_USERNAME} may already exist, continuing..."
+  echo -e "${GREEN}bytEM is running.${NC}"
 fi
 
-log "Getting access token for bot user..."
-# Get access token using Matrix API from inside container
-BOT_TOKEN=$(sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -s -X POST "${MATRIX_URL}/_matrix/client/r0/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"type\":\"m.login.password\",\"user\":\"${BOT_USERNAME}\",\"password\":\"${BOT_PASSWORD}\"}" | \
-    grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || echo "")
-
-if [ -n "$BOT_TOKEN" ] && [ "$BOT_TOKEN" != "null" ]; then
-    log "Bot token obtained successfully: ${BOT_TOKEN:0:20}..."
-    # Update .env with the new token
-    sed -i "s/BOT_USER_ACCESS_TOKEN=.*/BOT_USER_ACCESS_TOKEN=${BOT_TOKEN}/" .env
-    log "Updated .env with new bot token."
-else
-    log "Warning: Could not obtain bot token automatically. Trying alternative method..."
-    # Alternative: try with admin user credentials
-    BOT_TOKEN=$(sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -s -X POST "${MATRIX_URL}/_matrix/client/r0/login" \
-        -H "Content-Type: application/json" \
-        -d "{\"type\":\"m.login.password\",\"user\":\"${ADMIN_USERNAME}\",\"password\":\"${ADMIN_PASSWORD}\"}" | \
-        grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || echo "")
-    
-    if [ -n "$BOT_TOKEN" ] && [ "$BOT_TOKEN" != "null" ]; then
-        log "Bot token obtained with admin credentials: ${BOT_TOKEN:0:20}..."
-        sed -i "s/BOT_USER_ACCESS_TOKEN=.*/BOT_USER_ACCESS_TOKEN=${BOT_TOKEN}/" .env
-        log "Updated .env with new bot token."
-    else
-        log "ERROR: Could not obtain bot token. Manual intervention required."
-    fi
-fi
-
-header_message "Restarting all containers to apply new bot token"
-
-log "Performing full restart to apply updated token..."
-if sudo docker compose down && sudo docker compose up -d; then
-    log "All containers restarted successfully with new token."
-    sleep 10  # Give containers time to initialize
-else
-    log "Failed to restart containers."
-    exit 1
-fi
-
-header_message "Clearing Docker cache and unused images"
-
-if sudo docker image prune -f; then
-    log "Unused Docker images removed successfully."
-else
-    log "Failed to remove unused Docker images."
-fi
-
-# Fix frontend hardcoded domains
-header_message "Fixing frontend configuration"
-source .env
-
-# Wait for container to be ready
-sleep 5
-
-if sudo docker exec bytem-app test -d /usr/share/nginx/html; then
-    log "Replacing hardcoded domains in all frontend JS files..."
-    # Write the four replacement rules into a sed script inside the container.
-    # Variables are expanded by the outer shell before the script is written.
-    # Pattern [a-zA-Z0-9.]*[a-zA-Z] skips app constants that contain hyphens
-    # ("bytem.app.room-deid") or numeric suffixes ("supply.bytem.app.999...").
-    # matrix.bytem rules run first to prevent partial match by the bytem rules.
-    sudo docker exec bytem-app sh -c "
-echo 's/\"matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${MATRIX_SERVER_NAME}\"/g' > /tmp/domain_fix.sed
-echo 's|https://matrix\\.bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${MATRIX_SERVER_NAME}|g' >> /tmp/domain_fix.sed
-echo 's/\"bytem\\.[a-zA-Z0-9.]*[a-zA-Z]\"/\"${DOMAIN_NAME}\"/g' >> /tmp/domain_fix.sed
-echo 's|https://bytem\\.[a-zA-Z0-9.]*[a-zA-Z]|https://${DOMAIN_NAME}|g' >> /tmp/domain_fix.sed
-"
-    # Apply to every *.js file. Using sed -f + cp instead of sed -i to avoid
-    # "Resource busy" errors: cp overwrites the file's content in-place without
-    # renaming the inode, so nginx can keep the file open while we update it.
-    sudo docker exec bytem-app sh -c '
-        for f in /usr/share/nginx/html/*.js; do
-            sed -f /tmp/domain_fix.sed "$f" > /tmp/sed_out && cp /tmp/sed_out "$f" || true
-        done
-        rm -f /tmp/sed_out /tmp/domain_fix.sed
-    '
-
-    log "Frontend configuration updated successfully."
-else
-    log "Frontend directory not found, skipping domain fix."
-fi
-
-# Create welcome page for matrix subdomain
-log "Creating welcome page for matrix subdomain..."
-sudo docker exec bytem-app sh -c 'printf "<!DOCTYPE html>\n<html>\n<head><title>Welcome to Matrix Server</title></head>\n<body><h1>Welcome to Nginx!</h1><p>Matrix server is running successfully.</p></body>\n</html>" > /usr/share/nginx/html/matrix-welcome.html' || true
-log "Welcome page created successfully."
-
-header_message "Fixing Docker internal hostname resolution"
-
-log "Adding internal hostname entries to bytem-be and bytem-bot..."
-BYTEM_APP_IP=$(sudo docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bytem-app)
-sudo docker exec bytem-be sh -c "echo '$BYTEM_APP_IP ${DOMAIN_NAME} ${MATRIX_SERVER_NAME}' >> /etc/hosts"
-sudo docker exec bytem-bot sh -c "echo '$BYTEM_APP_IP ${DOMAIN_NAME} ${MATRIX_SERVER_NAME}' >> /etc/hosts"
-log "Hostname resolution fixed."
-
-header_message "Script completed successfully."
+echo "  Application: https://${DOMAIN_NAME}"
+echo "  Matrix:      https://${MATRIX_SERVER_NAME}"
+echo "  Test user:   @${TEST_USERNAME}:${MATRIX_SERVER_NAME}"
+echo "  Bot user:    @${BOT_USERNAME}:${MATRIX_SERVER_NAME}"
+echo
+warn "The bot access token is acquired inside the services; .env is not rewritten."

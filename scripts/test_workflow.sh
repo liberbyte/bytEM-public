@@ -13,26 +13,36 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Load environment variables
-if [ -f .env.bytem ]; then
-    source .env.bytem
+# Load environment variables from the public deployment root.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if [ -f "${DEPLOY_DIR}/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${DEPLOY_DIR}/.env"
+    set +a
 else
-    echo -e "${RED}Error: .env.bytem not found. Please run env_setup.sh first.${NC}"
+    echo -e "${RED}Error: .env not found. Please run env_setup.sh first.${NC}"
     exit 1
 fi
 
 # Configuration - all from environment, no defaults
 if [ -z "${BYTEM_DOMAIN:-}" ] || [ -z "${MATRIX_DOMAIN:-}" ]; then
-    echo -e "${RED}Error: BYTEM_DOMAIN and MATRIX_DOMAIN must be set in .env.bytem${NC}"
+    echo -e "${RED}Error: BYTEM_DOMAIN and MATRIX_DOMAIN must be set in .env${NC}"
     exit 1
 fi
 
 API_HOST="https://${BYTEM_DOMAIN}"
 MATRIX_HOST="https://${MATRIX_DOMAIN}"
 MATRIX_SERVER="${MATRIX_URL:-http://bytem-synapse:8008}"
-TEST_USER="${1:-test}"
-TEST_PASS="${2:-test}"
-BOT_USER_ID="${BOT_USER_ID}"
+TEST_USER="${1:-${TEST_USERNAME:-}}"
+TEST_PASS="${2:-${TEST_PASSWORD:-}}"
+BOT_USER_ID="${BOT_USER_ID:-}"
+
+if [ -z "$TEST_USER" ] || [ -z "$TEST_PASS" ] || [ -z "$BOT_USER_ID" ]; then
+    echo -e "${RED}Error: separate test credentials and BOT_USER_ID are required in .env.${NC}"
+    exit 1
+fi
 
 # Test identifiers
 TIMESTAMP=$(date +%s)

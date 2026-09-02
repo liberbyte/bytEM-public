@@ -1,397 +1,221 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Define colors
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BRIGHT_GREEN='\033[1;32m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-header_message() {
-  echo -e "${CYAN}==========================================${NC}"
-  echo -e "${CYAN}$1${NC}"
-  echo -e "${CYAN}==========================================${NC}"
-}
+info() { echo -e "${CYAN}$*${NC}"; }
+warn() { echo -e "${YELLOW}$*${NC}"; }
+die() { echo -e "${RED}ERROR: $*${NC}" >&2; exit 1; }
 
-# Error handler
-error_message() {
-  echo -e "${RED}$1${NC}" >&2
-}
-
-# Success message
-success_message() {
-  echo -e "${GREEN}$1${NC}"
-}
-
-# Informational message
-info_message() {
-  echo -e "${YELLOW}$1${NC}"
-}
-
-# Directory to store all generated files
-GENERATED_DIR="generated_config_files"
-
-header_message "Cleaning up any previous installation"
-
-# Stop any running containers and remove volumes
-info_message "Stopping Docker containers and removing volumes..."
-docker-compose down -v 2>/dev/null || true
-
-# Remove previous generated files
-if [ -d "$GENERATED_DIR" ] || [ -d "solr" ] || [ -d "certbot" ] || [ -f ".env" ]; then
-  info_message "Removing previous generated files..."
-  rm -rf generated_config_files/ solr/ certbot/ .env 2>/dev/null || true
-  success_message "Previous installation files removed."
-else
-  success_message "No previous installation found - starting fresh."
-fi
-
-header_message "Creating the base directory '$GENERATED_DIR' to store config files generated from template files"
-
-# Create the base directory
-mkdir -p "$GENERATED_DIR"
-
-# Create subdirectories for synapse_config and nginx_config
-mkdir -p "$GENERATED_DIR/synapse_config" "$GENERATED_DIR/nginx_config"
-
-info_message "Directory $GENERATED_DIR is created and config files are organized as follows:"
-success_message "- .env: In the root of the project"
-success_message "- Config files Base Directory: $GENERATED_DIR"
-success_message "- Synapse Config: $GENERATED_DIR/synapse_config"
-success_message "- Nginx Config: $GENERATED_DIR/nginx_config"
-
-
-header_message "Please enter the values for variables:"
-
-# Function to generate random 8-character alphanumeric password
 generate_password() {
-  tr -dc 'a-zA-Z0-9' </dev/urandom 2>/dev/null | head -c 8 || true
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 16
+  else
+    od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
+  fi
 }
 
-# Function to generate a 64-character hex secret (for Synapse macaroon/form secrets)
 generate_secret() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 32
   else
-    tr -dc 'a-f0-9' </dev/urandom 2>/dev/null | head -c 64 || true
+    od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
   fi
 }
 
-# Function to prompt for user input
-prompt_for_value() {
-  local var_name=$1
-  local prompt_message=$2
+prompt_required() {
+  local variable_name=$1
+  local label=$2
+  local secret=${3:-false}
   local value=""
 
-  while true; do
-    read -rp "Please enter $prompt_message: " value
-    if [ -n "$value" ]; then
-      eval "$var_name=\"$value\""
-      break
+  while [ -z "$value" ]; do
+    if [ "$secret" = true ]; then
+      read -rsp "$label: " value
+      echo
     else
-      echo -e "${RED}ERROR: $prompt_message cannot be empty.${NC}"
+      read -rp "$label: " value
     fi
   done
+  printf -v "$variable_name" '%s' "$value"
 }
 
-# Non-interactive mode: all required values must be provided as env vars
+validate_env_value() {
+  local label=$1
+  local value=$2
+  [[ "$value" =~ ^[A-Za-z0-9._:/@%+=,-]+$ ]] || \
+    die "$label contains characters that are unsafe in an environment file."
+}
+
+escape_replacement() {
+  printf '%s' "$1" | sed 's/[\\&|]/\\&/g'
+}
+
+replace_placeholder() {
+  local placeholder=$1
+  local value
+  value=$(escape_replacement "$2")
+  sed -i "s|\${${placeholder}}|${value}|g" "$OUTPUT_TMP"
+}
+
+existing_setting() {
+  local key=$1
+  if [ -f .env ]; then
+    awk -v key="$key" 'index($0, key "=") == 1 {print substr($0, length(key) + 2)}' .env | tail -n 1
+  fi
+}
+
 NON_INTERACTIVE=false
-if [ -n "${DOMAIN_NAME:-}" ] && [ -n "${SUBDOMAIN_PREFIX:-}" ] && [ -n "${BOT_PASSWORD:-}" ] && [ -n "${RABBITMQ_DEFAULT_PASS:-}" ] && [ -n "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
-  NON_INTERACTIVE=true
-  info_message "Non-interactive mode: using all values from environment variables"
-elif [ "${1:-}" = "--non-interactive" ] || [ "${1:-}" = "-n" ]; then
-  echo -e "${RED}ERROR: Non-interactive mode requires DOMAIN_NAME, SUBDOMAIN_PREFIX, BOT_PASSWORD, RABBITMQ_DEFAULT_PASS, and SYNAPSE_POSTGRES_PASSWORD environment variables.${NC}"
-  exit 1
-fi
-
-# If first arg is domain (backward compat), use it — but not when it's a flag
-if [ $# -ge 1 ] && [ "${1:-}" != "--non-interactive" ] && [ "${1:-}" != "-n" ]; then
-  DOMAIN_NAME=$1
-elif [ -n "${DOMAIN_NAME:-}" ]; then
-  echo -e "${YELLOW}Using DOMAIN_NAME from environment variable: $DOMAIN_NAME${NC}"
-else
-  # Auto-detect base domain from hostname
-  DETECTED_DOMAIN=$(hostname -f 2>/dev/null | sed 's/^[^.]*\.//' || hostname -d 2>/dev/null || echo "")
-  
-  # If no domain detected or it's localhost, provide example
-  if [ -z "$DETECTED_DOMAIN" ] || [[ "$DETECTED_DOMAIN" == "localhost" ]] || [[ "$DETECTED_DOMAIN" == *".local"* ]]; then
-    DETECTED_DOMAIN="example.com"
-  fi
-  
-  echo -e "${CYAN}Detected base domain: ${BRIGHT_GREEN}${DETECTED_DOMAIN}${NC}"
-  read -rp "Please enter a base domain name (e.g., example.com or liberbyte.app): " INPUT_DOMAIN
-  
-  if [ -z "$INPUT_DOMAIN" ]; then
-    DOMAIN_NAME="$DETECTED_DOMAIN"
-    echo -e "${GREEN}Using detected base domain: ${DOMAIN_NAME}${NC}"
-  else
-    DOMAIN_NAME="$INPUT_DOMAIN"
-  fi
-fi
-
-# Validate the domain name (format: <domain>.<extension>, no prefixes like www.)
-if [[ "$DOMAIN_NAME" =~ ^www\..* ]]; then
-  echo -e "${RED}ERROR: Domain should not start with 'www.' Expected format: <domain>.<extension> (e.g., example.com).${NC}"
-  exit 1
-elif [[ ! "$DOMAIN_NAME" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
-  echo -e "${RED}ERROR: Invalid domain name format. Expected format: <domain>.<extension> (e.g., example.com or example.co.uk).${NC}"
-  exit 1
-fi
-
-# Prompt for subdomain prefix (optional)
-if [ -n "${SUBDOMAIN_PREFIX:-}" ]; then
-  echo -e "${YELLOW}Using SUBDOMAIN_PREFIX from environment variable: $SUBDOMAIN_PREFIX${NC}"
-else
-  echo -e "${CYAN}Examples:${NC}"
-  echo -e "${CYAN}  - If you enter 'bm4', your domains will be: bytem.bm4.${DOMAIN_NAME}${NC}"
-  echo -e "${CYAN}  - If you leave empty, your domains will be: bytem.${DOMAIN_NAME}${NC}"
-  read -rp "Enter subdomain prefix (optional, press Enter to skip): " SUBDOMAIN_PREFIX
-fi
-
-# Set up domain variables based on subdomain prefix
-if [ -n "$SUBDOMAIN_PREFIX" ]; then
-  BYTEM_DOMAIN="bytem.${SUBDOMAIN_PREFIX}.${DOMAIN_NAME}"
-  MATRIX_DOMAIN="matrix.bytem.${SUBDOMAIN_PREFIX}.${DOMAIN_NAME}"
-else
-  BYTEM_DOMAIN="bytem.${DOMAIN_NAME}"
-  MATRIX_DOMAIN="matrix.bytem.${DOMAIN_NAME}"
-fi
-
-echo -e "${GREEN}Configuration:${NC}"
-echo -e "${GREEN}  Base domain: $DOMAIN_NAME${NC}"
-echo -e "${GREEN}  BytEM domain: $BYTEM_DOMAIN${NC}"
-echo -e "${GREEN}  Matrix domain: $MATRIX_DOMAIN${NC}"
-
-# Auto-generate bot credentials
-if [ -z "${BOT_USER:-}" ]; then
-  BOT_USER="bot"
-  info_message "Auto-generated BOT_USER: $BOT_USER"
-else
-  BOT_USER=$(echo "$BOT_USER" | tr '[:upper:]' '[:lower:]')
-fi
-
-if [ -z "${BOT_PASSWORD:-}" ]; then
-  BOT_PASSWORD=$(generate_password)
-  info_message "Auto-generated BOT_PASSWORD: $BOT_PASSWORD"
-fi
-# Auto-generate RabbitMQ credentials
-if [ -z "${RABBITMQ_DEFAULT_USER:-}" ]; then
-  RABBITMQ_DEFAULT_USER="bytem"
-  info_message "Auto-generated RABBITMQ_DEFAULT_USER: $RABBITMQ_DEFAULT_USER"
-fi
-
-if [ -z "${RABBITMQ_DEFAULT_PASS:-}" ]; then
-  RABBITMQ_DEFAULT_PASS=$(generate_password)
-  info_message "Auto-generated RABBITMQ_DEFAULT_PASS: $RABBITMQ_DEFAULT_PASS"
-fi
-# Auto-generate Synapse Postgres password
-if [ -z "${SYNAPSE_POSTGRES_PASSWORD:-}" ]; then
-  SYNAPSE_POSTGRES_PASSWORD=$(generate_password)
-  info_message "Auto-generated SYNAPSE_POSTGRES_PASSWORD: $SYNAPSE_POSTGRES_PASSWORD"
-fi
-# Auto-generate Matrix SSO credentials
-if [ -z "${MATRIX_SSO_CLIENT_ID:-}" ]; then
-  MATRIX_SSO_CLIENT_ID=$(generate_password)
-  info_message "Auto-generated MATRIX_SSO_CLIENT_ID: $MATRIX_SSO_CLIENT_ID"
-fi
-
-if [ -z "${MATRIX_SSO_CLIENT_SECRET:-}" ]; then
-  MATRIX_SSO_CLIENT_SECRET=$(generate_password)
-  info_message "Auto-generated MATRIX_SSO_CLIENT_SECRET: $MATRIX_SSO_CLIENT_SECRET"
-fi
-# Auto-generate Synapse security secrets
-if [ -z "${SYNAPSE_MACAROON_SECRET_KEY:-}" ]; then
-  SYNAPSE_MACAROON_SECRET_KEY=$(generate_secret)
-  info_message "Auto-generated SYNAPSE_MACAROON_SECRET_KEY"
-fi
-
-if [ -z "${SYNAPSE_FORM_SECRET:-}" ]; then
-  SYNAPSE_FORM_SECRET=$(generate_secret)
-  info_message "Auto-generated SYNAPSE_FORM_SECRET"
-fi
-
-# Auto-generate market list URLs if not provided
-if [ -z "${MARKET_LIST:-}" ]; then
-  MARKET_LIST="https://bytem.app/markets/byteM-market-list"
-  info_message "Using default MARKET_LIST: $MARKET_LIST"
-fi
-
-if [ -z "${FEDERATION_MARKET_LIST_URL:-}" ]; then
-  FEDERATION_MARKET_LIST_URL="https://bytem.app/markets/byteM-market-list"
-  info_message "Using default FEDERATION_MARKET_LIST_URL: $FEDERATION_MARKET_LIST_URL"
-fi
-
-if [ -z "${REGISTRATION_SHARED_SECRET:-}" ]; then
-  REGISTRATION_SHARED_SECRET=$(generate_secret)
-  info_message "Auto-generated REGISTRATION_SHARED_SECRET"
-fi
-if [ -z "${SOLR_PASSWORD:-}" ]; then
-  SOLR_PASSWORD=$(generate_password)
-  info_message "Auto-generated SOLR_PASSWORD"
-fi
-if [ -z "${JWT_SECRET:-}" ]; then
-  JWT_SECRET=$(generate_secret)
-  info_message "Auto-generated JWT_SECRET"
-fi
-
-
-header_message "Generating .env file:"
-
-# Generate .env from .env.template
-ENV_TEMPLATE_FILE=".env.template"
-ENV_OUTPUT_FILE=".env"
-
-if [ -f "$ENV_TEMPLATE_FILE" ]; then
-  # Check if the output file already exists
-  if [ -f "$ENV_OUTPUT_FILE" ]; then
-    echo -e "${YELLOW}WARNING: The file '$ENV_OUTPUT_FILE' already exists.${NC}"
-    while true; do
-      read -rp "Do you want to create a new one? Current $ENV_OUTPUT_FILE will be backed up if you choose yes. (yes/no): " response
-      case $response in
-        [Yy][Ee][Ss] )
-          # Backup the existing file
-          BACKUP_FILE="$ENV_OUTPUT_FILE.backup.$(date +%Y%m%d%H%M%S)"
-          mv "$ENV_OUTPUT_FILE" "$BACKUP_FILE"
-          echo -e "${GREEN}Existing file backed up as '$BACKUP_FILE'.${NC}"
-          
-          # Generate the new file
-          sed \
-            -e "s/\${DOMAIN}/$DOMAIN_NAME/g" \
-            -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
-            -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
-            -e "s/\${BOT_USER}/$BOT_USER/g" \
-            -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-            -e "s/\${RABBITMQ_DEFAULT_USER}/$RABBITMQ_DEFAULT_USER/g" \
-            -e "s/\${RABBITMQ_DEFAULT_PASS}/$RABBITMQ_DEFAULT_PASS/g" \
-            -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
-            -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
-            -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
-            -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
-            -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
-            -e "s/\${SYNAPSE_MACAROON_SECRET_KEY}/$SYNAPSE_MACAROON_SECRET_KEY/g" \
-            -e "s/\${SYNAPSE_FORM_SECRET}/$SYNAPSE_FORM_SECRET/g" \
-            -e "s/\${REGISTRATION_SHARED_SECRET}/$REGISTRATION_SHARED_SECRET/g" \
-            -e "s/\${SOLR_PASSWORD}/$SOLR_PASSWORD/g" \
-            -e "s/\${JWT_SECRET}/$JWT_SECRET/g" \
-            "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
-          echo -e "${BRIGHT_GREEN}----- NEW ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
-          break
-          ;;
-        [Nn][Oo] )
-          echo -e "${YELLOW}Skipping the creation of '$ENV_OUTPUT_FILE'.${NC}"
-          break
-          ;;
-        * )
-          echo -e "${RED}Invalid response. Please answer 'yes' or 'no'.${NC}"
-          ;;
-      esac
-    done
-  else
-    # Generate the file if it doesn't exist
-    sed \
-      -e "s/\${DOMAIN}/$DOMAIN_NAME/g" \
-      -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
-      -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
-      -e "s/\${BOT_USER}/$BOT_USER/g" \
-      -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-      -e "s/\${RABBITMQ_DEFAULT_USER}/$RABBITMQ_DEFAULT_USER/g" \
-      -e "s/\${RABBITMQ_DEFAULT_PASS}/$RABBITMQ_DEFAULT_PASS/g" \
-      -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
-      -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
-      -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
-      -e "s|\${MARKET_LIST}|$MARKET_LIST|g" \
-      -e "s|\${FEDERATION_MARKET_LIST_URL}|$FEDERATION_MARKET_LIST_URL|g" \
-      -e "s/\${SYNAPSE_MACAROON_SECRET_KEY}/$SYNAPSE_MACAROON_SECRET_KEY/g" \
-      -e "s/\${SYNAPSE_FORM_SECRET}/$SYNAPSE_FORM_SECRET/g" \
-      -e "s/\${REGISTRATION_SHARED_SECRET}/$REGISTRATION_SHARED_SECRET/g" \
-      -e "s/\${SOLR_PASSWORD}/$SOLR_PASSWORD/g" \
-      -e "s/\${JWT_SECRET}/$JWT_SECRET/g" \
-      "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
-    echo -e "${BRIGHT_GREEN}----- ENV FILE GENERATED: $ENV_OUTPUT_FILE -----${NC}"
-  fi
-else
-  echo -e "${RED}----- ERROR: Template file not found: $ENV_TEMPLATE_FILE -----${NC}"
-  exit 1
-fi
-
-header_message "Generating Nginx Config Files:"
-
-# Nginx template files
-NGINX_TEMPLATES=(
-    "config_templates/nginx_config_templates/bytem.template"
-    "config_templates/nginx_config_templates/matrix.bytem.template"
-)
-
-# Generate nginx config files
-echo -e "${YELLOW}----- Generating Nginx configuration files... -----${NC}"
-for template in "${NGINX_TEMPLATES[@]}"; do
-  if [ -f "$template" ]; then
-    # Generate appropriate filename based on template
-    if [[ "$template" == *"matrix.bytem.template" ]]; then
-      output_file="$GENERATED_DIR/nginx_config/matrix.${BYTEM_DOMAIN}.conf"
-      CERT_PATH="/etc/letsencrypt/live/$MATRIX_DOMAIN"
-    else
-      output_file="$GENERATED_DIR/nginx_config/${BYTEM_DOMAIN}.conf"
-      CERT_PATH="/etc/letsencrypt/live/$BYTEM_DOMAIN"
-    fi
-    sed \
-      -e "s/\${DOMAIN}/$DOMAIN_NAME/g" \
-      -e "s/\${BYTEM_DOMAIN}/$BYTEM_DOMAIN/g" \
-      -e "s/\${MATRIX_DOMAIN}/$MATRIX_DOMAIN/g" \
-      -e "s/\${BOT_USER}/$BOT_USER/g" \
-      -e "s/\${BOT_PASSWORD}/$BOT_PASSWORD/g" \
-      -e "s/\${RABBITMQ_DEFAULT_USER}/$RABBITMQ_DEFAULT_USER/g" \
-      -e "s/\${RABBITMQ_DEFAULT_PASS}/$RABBITMQ_DEFAULT_PASS/g" \
-      -e "s/\${SYNAPSE_POSTGRES_PASSWORD}/$SYNAPSE_POSTGRES_PASSWORD/g" \
-      -e "s/\${MATRIX_SSO_CLIENT_ID}/$MATRIX_SSO_CLIENT_ID/g" \
-      -e "s/\${MATRIX_SSO_CLIENT_SECRET}/$MATRIX_SSO_CLIENT_SECRET/g" \
-      -e "s|\${CERT_PATH}|$CERT_PATH|g" \
-      "$template" > "$output_file"
-    echo -e "${GREEN}Generated file: $output_file${NC}"
-  else
-    echo -e "${RED}ERROR: Template file not found: $template${NC}"
-    exit 1
-  fi
+FORCE=false
+for argument in "$@"; do
+  case "$argument" in
+    --non-interactive|-n) NON_INTERACTIVE=true ;;
+    --force|-f) FORCE=true ;;
+    *) die "Unknown option: $argument" ;;
+  esac
 done
 
-# Generate frontend config.js file
-header_message "Generating Frontend Config File:"
-CONFIG_JS_TEMPLATE="config_templates/config.js.template"
-CONFIG_JS_OUTPUT="$GENERATED_DIR/nginx_config/config.js"
-
-if [ -f "$CONFIG_JS_TEMPLATE" ]; then
-  sed \
-    -e "s/DOMAIN_PLACEHOLDER/$BYTEM_DOMAIN/g" \
-    "$CONFIG_JS_TEMPLATE" > "$CONFIG_JS_OUTPUT"
-  echo -e "${GREEN}Generated frontend config: $CONFIG_JS_OUTPUT${NC}"
-
-  # Generate PWA config.js (same content — Docker creates it as a directory if missing)
-  PWA_CONFIG_JS_OUTPUT="$GENERATED_DIR/nginx_config/pwa-config.js"
-  # Remove directory if Docker previously created it incorrectly
-  [ -d "$PWA_CONFIG_JS_OUTPUT" ] && rm -rf "$PWA_CONFIG_JS_OUTPUT"
-  sed \
-    -e "s/DOMAIN_PLACEHOLDER/$BYTEM_DOMAIN/g" \
-    "$CONFIG_JS_TEMPLATE" > "$PWA_CONFIG_JS_OUTPUT"
-  echo -e "${GREEN}Generated PWA config: $PWA_CONFIG_JS_OUTPUT${NC}"
+if [ "$NON_INTERACTIVE" = true ]; then
+  required=(DOMAIN_NAME TEST_USERNAME TEST_PASSWORD BOT_USERNAME BOT_PASSWORD)
+  for variable_name in "${required[@]}"; do
+    [ -n "${!variable_name:-}" ] || die "--non-interactive requires $variable_name."
+  done
+  SUBDOMAIN_PREFIX=${SUBDOMAIN_PREFIX:-}
 else
-  echo -e "${RED}ERROR: Template file not found: $CONFIG_JS_TEMPLATE${NC}"
-  exit 1
+  info "BytEM public deployment setup"
+  prompt_required DOMAIN_NAME "Base domain (for example, liberbyte.app)"
+  read -rp "Optional instance prefix (for example, bm4): " SUBDOMAIN_PREFIX
+
+  echo
+  info "Test/admin account (used by a person to log in and test the instance)"
+  prompt_required TEST_USERNAME "Test username"
+  prompt_required TEST_PASSWORD "Test password" true
+
+  echo
+  info "Bot account (used only by the backend and bot services)"
+  prompt_required BOT_USERNAME "Bot username"
+  prompt_required BOT_PASSWORD "Bot password" true
 fi
 
-header_message "Setting up SSL configuration"
+DOMAIN_NAME=${DOMAIN_NAME,,}
+SUBDOMAIN_PREFIX=${SUBDOMAIN_PREFIX,,}
+TEST_USERNAME=${TEST_USERNAME,,}
+BOT_USERNAME=${BOT_USERNAME,,}
 
-# Create SSL directories
-mkdir -p "certbot/conf/live/${BYTEM_DOMAIN}"
-mkdir -p "certbot/www"
+[[ "$DOMAIN_NAME" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || \
+  die "Invalid base domain: $DOMAIN_NAME"
+[[ -z "$SUBDOMAIN_PREFIX" || "$SUBDOMAIN_PREFIX" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || \
+  die "Invalid instance prefix: $SUBDOMAIN_PREFIX"
+[[ "$TEST_USERNAME" =~ ^[a-z0-9._=-]+$ ]] || die "Invalid test username."
+[[ "$BOT_USERNAME" =~ ^[a-z0-9._=-]+$ ]] || die "Invalid bot username."
+[ "$TEST_USERNAME" != "$BOT_USERNAME" ] || die "Test and bot usernames must be different."
+[ "$TEST_PASSWORD" != "$BOT_PASSWORD" ] || die "Test and bot passwords must be different."
 
-echo -e "${GREEN}SSL directory structure created${NC}"
-echo -e "${YELLOW}Note: Real certificates will be obtained by certbot.sh after containers are running${NC}"
+for credential in TEST_PASSWORD BOT_PASSWORD; do
+  validate_env_value "$credential" "${!credential}"
+done
 
-header_message "----- ALL SET..! -----"
+if [ -n "$SUBDOMAIN_PREFIX" ]; then
+  BYTEM_DOMAIN="bytem.${SUBDOMAIN_PREFIX}.${DOMAIN_NAME}"
+else
+  BYTEM_DOMAIN="bytem.${DOMAIN_NAME}"
+fi
+MATRIX_DOMAIN="matrix.${BYTEM_DOMAIN}"
 
-echo -e "${RED}IMPORTANT: ${BRIGHT_GREEN}PLEASE BACKUP THE FILE $ENV_OUTPUT_FILE TO ENSURE NOT TO LOSE THE SET CREDENTIALS!!!${NC}"
-echo -e "${YELLOW}----- If you are not happy with the set values, delete the file $ENV_OUTPUT_FILE and directory $GENERATED_DIR and start over!!! -----${NC}"
-echo -e "${CYAN}==========================================${NC}"
+RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-$(existing_setting RABBITMQ_DEFAULT_USER)}
+RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-bytem}
+RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-$(existing_setting RABBITMQ_DEFAULT_PASS)}
+RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-$(generate_password)}
+SYNAPSE_POSTGRES_PASSWORD=${SYNAPSE_POSTGRES_PASSWORD:-$(existing_setting SYNAPSE_POSTGRES_PASSWORD)}
+SYNAPSE_POSTGRES_PASSWORD=${SYNAPSE_POSTGRES_PASSWORD:-$(generate_password)}
+SOLR_USER=${SOLR_USER:-$(existing_setting SOLR_USER)}
+SOLR_USER=${SOLR_USER:-solr}
+SOLR_PASSWORD=${SOLR_PASSWORD:-$(existing_setting SOLR_PASSWORD)}
+SOLR_PASSWORD=${SOLR_PASSWORD:-$(generate_password)}
+REGISTRATION_SHARED_SECRET=${REGISTRATION_SHARED_SECRET:-$(existing_setting REGISTRATION_SHARED_SECRET)}
+REGISTRATION_SHARED_SECRET=${REGISTRATION_SHARED_SECRET:-$(generate_secret)}
+SYNAPSE_MACAROON_SECRET_KEY=${SYNAPSE_MACAROON_SECRET_KEY:-$(existing_setting SYNAPSE_MACAROON_SECRET_KEY)}
+SYNAPSE_MACAROON_SECRET_KEY=${SYNAPSE_MACAROON_SECRET_KEY:-$(generate_secret)}
+SYNAPSE_FORM_SECRET=${SYNAPSE_FORM_SECRET:-$(existing_setting SYNAPSE_FORM_SECRET)}
+SYNAPSE_FORM_SECRET=${SYNAPSE_FORM_SECRET:-$(generate_secret)}
+JWT_SECRET=${JWT_SECRET:-$(existing_setting JWT_SECRET)}
+JWT_SECRET=${JWT_SECRET:-$(generate_secret)}
+MARKET_LIST=${MARKET_LIST:-$(existing_setting MARKET_LIST)}
+MARKET_LIST=${MARKET_LIST:-https://bytem.app/markets/byteM-market-list}
+FEDERATION_MARKET_LIST_URL=${FEDERATION_MARKET_LIST_URL:-$(existing_setting FEDERATION_MARKET_LIST_URL)}
+FEDERATION_MARKET_LIST_URL=${FEDERATION_MARKET_LIST_URL:-$MARKET_LIST}
+FEDERATION_EXTRA_DOMAINS=${FEDERATION_EXTRA_DOMAINS:-$(existing_setting FEDERATION_EXTRA_DOMAINS)}
+FEDERATION_EXTRA_DOMAINS=${FEDERATION_EXTRA_DOMAINS:-matrix.org}
+FEDERATION_STRICT=${FEDERATION_STRICT:-$(existing_setting FEDERATION_STRICT)}
+FEDERATION_STRICT=${FEDERATION_STRICT:-0}
+SSL_EMAIL=${SSL_EMAIL:-$(existing_setting SSL_EMAIL)}
+SSL_EMAIL=${SSL_EMAIL:-admin@${BYTEM_DOMAIN}}
+NEXT_PUBLIC_DEMAND_PRODUCT_DEID=${NEXT_PUBLIC_DEMAND_PRODUCT_DEID:-$(existing_setting NEXT_PUBLIC_DEMAND_PRODUCT_DEID)}
+NEXT_PUBLIC_DEMAND_PRODUCT_DEID=${NEXT_PUBLIC_DEMAND_PRODUCT_DEID:-https://cities.app/de/he/water/water-quality}
+
+for variable_name in \
+  RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS SYNAPSE_POSTGRES_PASSWORD \
+  SOLR_USER SOLR_PASSWORD REGISTRATION_SHARED_SECRET SYNAPSE_MACAROON_SECRET_KEY \
+  SYNAPSE_FORM_SECRET JWT_SECRET MARKET_LIST FEDERATION_MARKET_LIST_URL \
+  FEDERATION_EXTRA_DOMAINS FEDERATION_STRICT SSL_EMAIL NEXT_PUBLIC_DEMAND_PRODUCT_DEID; do
+  validate_env_value "$variable_name" "${!variable_name}"
+done
+
+if [ -f .env ]; then
+  if [ "$FORCE" != true ]; then
+    die ".env already exists. Re-run with --force to back it up and generate a replacement."
+  fi
+  backup_file=".env.backup.$(date +%Y%m%d%H%M%S)"
+  cp .env "$backup_file"
+  warn "Existing .env backed up to $backup_file"
+fi
+
+OUTPUT_TMP=$(mktemp .env.tmp.XXXXXX)
+trap 'rm -f "$OUTPUT_TMP"' EXIT
+cp .env.template "$OUTPUT_TMP"
+
+replace_placeholder BYTEM_DOMAIN "$BYTEM_DOMAIN"
+replace_placeholder MATRIX_DOMAIN "$MATRIX_DOMAIN"
+replace_placeholder TEST_USERNAME "$TEST_USERNAME"
+replace_placeholder TEST_PASSWORD "$TEST_PASSWORD"
+replace_placeholder BOT_USERNAME "$BOT_USERNAME"
+replace_placeholder BOT_PASSWORD "$BOT_PASSWORD"
+replace_placeholder RABBITMQ_DEFAULT_USER "$RABBITMQ_DEFAULT_USER"
+replace_placeholder RABBITMQ_DEFAULT_PASS "$RABBITMQ_DEFAULT_PASS"
+replace_placeholder SYNAPSE_POSTGRES_PASSWORD "$SYNAPSE_POSTGRES_PASSWORD"
+replace_placeholder SOLR_USER "$SOLR_USER"
+replace_placeholder SOLR_PASSWORD "$SOLR_PASSWORD"
+replace_placeholder REGISTRATION_SHARED_SECRET "$REGISTRATION_SHARED_SECRET"
+replace_placeholder SYNAPSE_MACAROON_SECRET_KEY "$SYNAPSE_MACAROON_SECRET_KEY"
+replace_placeholder SYNAPSE_FORM_SECRET "$SYNAPSE_FORM_SECRET"
+replace_placeholder JWT_SECRET "$JWT_SECRET"
+replace_placeholder MARKET_LIST "$MARKET_LIST"
+replace_placeholder FEDERATION_MARKET_LIST_URL "$FEDERATION_MARKET_LIST_URL"
+replace_placeholder FEDERATION_EXTRA_DOMAINS "$FEDERATION_EXTRA_DOMAINS"
+replace_placeholder FEDERATION_STRICT "$FEDERATION_STRICT"
+replace_placeholder SSL_EMAIL "$SSL_EMAIL"
+replace_placeholder NEXT_PUBLIC_DEMAND_PRODUCT_DEID "$NEXT_PUBLIC_DEMAND_PRODUCT_DEID"
+
+if grep -q '\${[A-Z_][A-Z_]*}' "$OUTPUT_TMP"; then
+  grep -n '\${[A-Z_][A-Z_]*}' "$OUTPUT_TMP" >&2
+  die "One or more template placeholders were not replaced."
+fi
+
+chmod 600 "$OUTPUT_TMP"
+mv "$OUTPUT_TMP" .env
+trap - EXIT
+mkdir -p certbot/conf certbot/www
+
+echo -e "${GREEN}Created .env with separate test and bot accounts.${NC}"
+echo "  Application: https://${BYTEM_DOMAIN}"
+echo "  Matrix:      https://${MATRIX_DOMAIN}"
+echo "  Test user:   @${TEST_USERNAME}:${MATRIX_DOMAIN}"
+echo "  Bot user:    @${BOT_USERNAME}:${MATRIX_DOMAIN}"
+warn "Back up .env securely. Do not commit it."

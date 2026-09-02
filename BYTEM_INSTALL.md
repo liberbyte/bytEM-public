@@ -1,457 +1,173 @@
-# bytEM Installation Guide
+# bytEM installation and upgrade guide
 
-<sub>Alpha · Ubuntu 24.04 · Docker deployment</sub>
+## Architecture
 
-**Install and configure a self-hosted bytEM instance.**
+The public installer pulls the images produced by the private/source
+repository's GitHub Actions workflow:
 
-> [!NOTE]
-> This guide covers the standard Docker-based bytEM installation on Ubuntu 24.04.
+| Service | Image | Purpose |
+| --- | --- | --- |
+| `bytem-nginx` | `liberbyteadmin/bytem:nginx` | TLS, reverse proxy, Matrix discovery and federation |
+| `bytem-pwa` | `liberbyteadmin/bytem:pwa` | The single merged frontend |
+| `bytem-be` | `liberbyteadmin/bytem:be` | API gateway |
+| `bytem-bot` | `liberbyteadmin/bytem:bot` | Matrix workflow bot |
+| `bytem-synapse` | `liberbyteadmin/bytem:synapse` | Matrix Synapse 1.159 with bytEM modules |
+| `bytem-solr` | `liberbyteadmin/bytem:solr` | Search index |
 
-> [!IMPORTANT]
-> Throughout this guide, replace:
->
-> - `your-domain` with your actual domain or subdomain
-> - `<USERNAME>` with your Matrix/bytEM username
-> - `<PASSWORD>` with a strong password
+PostgreSQL and RabbitMQ use their upstream images.
 
-## Installation Flow
-
-```text
-Prepare Server
-     │
-     ▼
-Configure Environment
-     │
-     ▼
-Install bytEM
-     │
-     ▼
-Verify Containers
-     │
-     ▼
-Configure HTTPS
-     │
-     ▼
-Join bytEM Network
-     │
-     ▼
-Create Administrator
-     │
-     ▼
-Verify Installation
-```
-
-### Quick Install
-
-After Docker is installed and the repository has been cloned, the main installation sequence is:
-
-```bash
-sudo ./env_setup.sh
-sudo ./install.sh
-sudo ./certbot.sh
-sudo ./whitelist-sync.sh
-```
-
-> [!TIP]
-> **Video installation guide:**  
-> https://github.com/user-attachments/assets/73e70afb-fae8-460c-9ce4-6636fe058f05
-
-## Contents
-
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Verify Installation](#verify-installation)
-- [Upgrade bytEM](#upgrade-bytem)
-- [Appendix — Deployment Architecture](#appendix--deployment-architecture)
-- [Troubleshooting](#troubleshooting)
-- [Support](#support)
-- [bytEM User Guide](#bytem-user-guide)
+There is no `bytem-app` service and no generated host-side nginx or Synapse
+configuration. The nginx and Synapse images generate their configuration from
+`.env`. Synapse data, including its signing key and media, lives in the
+`bytem-synapse-data` volume.
 
 ## Prerequisites
 
-Before installation, make sure the server meets the following requirements.
+- Docker Engine with Compose v2 (`docker compose version`)
+- at least 8 GB RAM available for the Synapse container limit
+- DNS A/AAAA records for the application and Matrix names
+- inbound TCP 80, 443, and 8448
+- outbound HTTPS for image pulls and federation market-list retrieval
 
-| Requirement | Minimum / Details |
-|---|---|
-| **Operating system** | Ubuntu 24.04 |
-| **CPU** | 2 cores |
-| **Memory** | 8 GB RAM |
-| **Storage** | 80 GB |
-| **Network** | Public IP address |
-| **DNS** | Dedicated domain or subdomain |
-| **Credentials** | Custom credentials for the bot user, RabbitMQ, Synapse, and related services |
+For a base domain `example.com` and prefix `bm4`, setup creates:
 
-> [!IMPORTANT]
-> Before running `certbot.sh`, ensure the bytEM and Matrix hostnames resolve to this server's public IP address.
+- `bytem.bm4.example.com`
+- `matrix.bytem.bm4.example.com`
 
-## Installation
+Both names must resolve to the Docker host before certificate issuance.
 
-### 1. Install Docker and Clone bytEM
-
-Install Docker, Docker Compose, Git, and clone the repository:
+## Fresh installation
 
 ```bash
-sudo apt update
-sudo apt install docker docker-compose git
-
 git clone https://github.com/liberbyte/bytEM-public.git
 cd bytEM-public
+chmod +x env_setup.sh certbot.sh install.sh whitelist-sync.sh scripts/*.sh
+./env_setup.sh
+./install.sh
 ```
 
-> [!TIP]
-> If `docker-compose` is not recognized, create the compatibility symlink:
->
-> ```bash
-> sudo ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
-> ```
+The setup asks separately for:
 
-> [!NOTE]
-> If `git clone` fails with a permission error, use `sudo git clone ...` instead.
+1. Test/admin account credentials, used by a person to sign in.
+2. Bot account credentials, used only by `bytem-be` and `bytem-bot`.
 
-#### Optional — Move Docker Storage
+Synapse creates both accounts on its first healthy start. They must have
+different usernames and should have different passwords. SSO client credentials
+are no longer part of installation.
 
-If the server has a dedicated storage volume, for example `/xxx-liberbyte`, Docker's data directory can be moved to avoid filling the root filesystem.
+Infrastructure passwords and stable Synapse secrets are generated
+automatically. Store `.env` in a password manager or secure backup and never
+commit it.
 
-> [!IMPORTANT]
-> Perform this step **before running any other bytEM installation scripts**.
+`install.sh` then:
+
+1. validates Compose interpolation;
+2. pulls the published images;
+3. obtains missing TLS certificates;
+4. migrates legacy Synapse `/data`, when present;
+5. starts the stack and waits for health checks.
+
+The backend and bot authenticate with `BOT_USERNAME` and `BOT_PASSWORD` at
+runtime. They refresh the bot access token in memory. Installation does not put
+a test-user token into bot settings, write a token back into `.env`, or restart
+the stack merely to propagate a token.
+
+## TLS
+
+`install.sh` calls `certbot.sh` automatically when either certificate is
+missing. For renewal:
 
 ```bash
-# Stop Docker
-sudo systemctl stop docker
-
-# Create directory on dedicated storage
-sudo mkdir -p /xxx-liberbyte/bytem/docker
-
-# Move Docker data
-sudo mv /var/lib/docker /xxx-liberbyte/bytem/docker
-
-# Create symlink
-sudo ln -s /xxx-liberbyte/bytem/docker /var/lib/docker
-
-# Restart Docker
-sudo systemctl start docker
-
-# Verify the new location
-sudo docker info | grep "Docker Root Dir"
-# Expected: Docker Root Dir: /xxx-liberbyte/bytem/docker
-
-# Navigate to dedicated storage
-cd /xxx-liberbyte
+./certbot.sh
 ```
 
-**Result:** Docker images, containers, and volumes are stored on the larger dedicated volume, keeping the root filesystem clear. No changes to the bytEM installation scripts are required afterward.
-
-### 2. Configure the Environment
-
-Run `env_setup.sh` before the installer:
+For local-only testing where public Let's Encrypt validation is impossible:
 
 ```bash
-sudo ./env_setup.sh
+./certbot.sh --self-signed
+./install.sh
 ```
 
-When prompted, enter:
+Self-signed certificates cause browser warnings and are not suitable for Matrix
+federation in production.
 
-- Your subdomain, for example `liberbyte.app`
-- Your prefix, for example `bm4`
-- Custom credentials for the bot user, RabbitMQ, Synapse, and related services
+## Upgrade an existing installation
 
-#### Result
-
-`env_setup.sh`:
-
-- creates `generated_config_files/`
-- creates:
-  - `generated_config_files/nginx_config/`
-  - `generated_config_files/synapse_config/`
-- populates configuration files from templates in `config_templates/`
-- generates `.env.bytem` from `.env.template`
-- prompts you to back up an existing `.env.bytem` before overwriting it
-
-### 3. Install bytEM
-
-Run:
+Back up state first:
 
 ```bash
-sudo ./install.sh
+./scripts/pre_reinstall_check.sh
+cp .env "/secure/location/bytem.env.$(date +%F)"
 ```
 
-#### Result
-
-`install.sh`:
-
-- sets ownership on `generated_config_files/` so the Synapse container can read it
-- pulls Docker images and starts all containers via `docker-compose.yaml`
-- registers the bot/admin Matrix user and saves the login token to `.env.bytem`
-- restarts the stack so all containers use the new token
-- patches hardcoded domains in the frontend bundle to match the configured domain
-- creates a welcome page for the Matrix subdomain
-- configures internal networking so the app can reach the homeserver
-
-> [!NOTE]
-> If you see **Cannot reach homeserver** after restarting or upgrading, rerun:
->
-> ```bash
-> sudo ./install.sh
-> ```
-
-### 4. Verify Containers
-
-After `install.sh` completes:
+Then update and install:
 
 ```bash
-sudo docker ps
+git pull --ff-only
+./install.sh
 ```
 
-All bytEM containers should show a status of `Up`.
+The installer does not run `docker compose down -v`, prune all images, replace
+`.env`, or delete certificates. The existing PostgreSQL, Solr, RabbitMQ, and
+Synapse named volumes are retained.
 
-### 5. Configure HTTPS
+When upgrading from the old `bytem-app` Compose layout, the installer detects
+`generated_config_files/synapse_config`. If the new `bytem-synapse-data` volume
+is empty, it copies the old `/data` contents into that volume before starting
+Synapse. This preserves the server signing key and media. The old
+`generated_config_files` directory is not deleted automatically; remove it only
+after verifying the upgraded deployment and retaining a backup.
 
-Run:
+If you intentionally need a replacement `.env`, the setup backs up the old one:
 
 ```bash
-sudo ./certbot.sh
+./env_setup.sh --force
 ```
 
-Enter an email address when prompted. It is used for Let's Encrypt renewal notices.
+This is also the migration path for an old `.env` that used the bot as its test
+admin. Enter the existing domains plus new, separate account credentials. The
+script preserves existing database/search passwords and stable Synapse secrets
+unless you explicitly override those values in the command environment.
 
-#### Result
+Changing the Synapse secrets or losing its signing key can invalidate sessions
+or break federation identity, so do not regenerate them during a routine image
+upgrade.
 
-`certbot.sh`:
-
-- bootstraps a temporary self-signed certificate so Nginx can start immediately
-- obtains or renews Let's Encrypt SSL certificates for bytEM and Matrix domains
-- falls back to the self-signed certificate if Let's Encrypt is unavailable
-- regenerates Nginx configuration with the correct certificate paths
-- reloads Nginx
-- patches hardcoded domains in the frontend bundle
-
-### 6. Synchronize the Federation Whitelist
-
-bytEM uses a whitelist to control which servers can communicate with the instance. Only approved servers can exchange data with it.
-
-This provides:
-
-- **Security** — prevents unauthorized servers from accessing the data catalog
-- **Trust** — connects the instance only with verified bytEM peers
-- **Federation control** — defines the trusted peer network
-
-Run:
+## Verification and operation
 
 ```bash
-sudo ./whitelist-sync.sh
+docker compose ps
+docker compose logs --tail 100 bytem-synapse bytem-be bytem-bot bytem-nginx
+set -a; source .env; set +a
+curl -fsS "https://${DOMAIN_NAME}/api/auth/health"
+curl -fsS "https://${MATRIX_SERVER_NAME}/_matrix/client/versions"
 ```
 
-#### Result
-
-`whitelist-sync.sh`:
-
-- fetches the latest allowed-domain list from the bytEM registry
-- updates `homeserver.yaml` with the federation whitelist
-- restricts the `/solr` endpoint in Nginx to bytEM servers only
-- reloads Nginx and Matrix Synapse configuration inside their containers
-- sets the bot/admin user's Matrix rate-limit override so it is not throttled by Synapse
-- restarts `bytem-synapse`, `bytem-bot`, `bytem-be`, and `bytem-app`
-
-### 7. Create the First Administrator
-
-A Matrix user is required to log in and verify the installation.
-
-#### Interactive Method
+Run the end-to-end workflow with the test account stored in `.env`:
 
 ```bash
-sudo docker exec -it bytem-synapse register_new_matrix_user \
-  -c /data/homeserver.yaml \
-  http://localhost:8008
+./scripts/test_workflow.sh
 ```
 
-Enter:
+The test account and bot account remain separate: the test logs in and creates
+the test rooms; the bot is invited to process them.
 
-- username
-- password
-- whether the user should receive administrator rights
-
-Administrator rights are recommended for the first user.
-
-#### Non-Interactive Method
+Synapse builds its federation whitelist at container start from
+`FEDERATION_MARKET_LIST_URL` (or `MARKET_LIST`). To fetch it again and inspect
+the resulting active list:
 
 ```bash
-sudo docker exec -it bytem-synapse register_new_matrix_user \
-  -c /data/homeserver.yaml \
-  --user <ADMIN_USERNAME> \
-  --password '<STRONG_PASSWORD>' \
-  --admin \
-  http://localhost:8008
+./whitelist-sync.sh
 ```
 
-This creates an administrator account such as:
+## Common problems
 
-```text
-@<ADMIN_USERNAME>:your-domain
-```
-
-> [!NOTE]
-> `User ID already taken` is not an installation failure. The user already exists from a previous script run. Sign in with the existing credentials or create another username.
-
-## Verify Installation
-
-Run the following checks after installation.
-
-### 1. Container Health
-
-```bash
-sudo docker ps
-```
-
-Expected result: all bytEM containers report `Up`.
-
-### 2. Matrix Endpoint
-
-Open:
-
-```text
-https://matrix.bytem.your-domain.app
-```
-
-Expected result: the bytEM login page is accessible.
-
-If the page does not load, check Nginx and SSL configuration.
-
-### 3. bytEM Login
-
-Open:
-
-```text
-https://bytem.your-domain.app/user/login
-```
-
-Sign in with the Matrix user created during installation.
-
-### 4. Application Access
-
-After login, confirm that the main bytEM application loads successfully.
-
-If login fails:
-
-```bash
-sudo docker logs bytem-synapse --tail 50
-```
-
-> [!TIP]
-> If the Homeserver field shows an unexpected domain, or login fails immediately after a fresh installation, perform a hard refresh (`Ctrl+Shift+R`) and try again.
-
-## Upgrade bytEM
-
-> [!IMPORTANT]
-> Upgrading preserves existing Docker volumes, Matrix users, SSL certificates, domain configuration, and `.env.bytem`.
-
-Run:
-
-```bash
-sudo ./install.sh
-```
-
-Docker pulls the latest images and recreates the containers.
-
-You do **not** normally need to rerun:
-
-- `env_setup.sh`
-- `certbot.sh`
-- `whitelist-sync.sh`
-
-After upgrading:
-
-```bash
-sudo docker ps
-```
-
-Confirm that all containers are running, then test login with an existing user and verify that the services remain accessible.
-
-## Appendix — Deployment Architecture
-
-### Docker Images
-
-| Image | Tag | Size |
-|---|---|---|
-| `bytem-app` | latest | 292 MB |
-| `bytem-be` | latest | 408 MB |
-| `bytem-bot` | latest | 378 MB |
-| `postgres` | 14-alpine | 278 MB |
-| `matrixdotorg/synapse` | v1.123.0 | 418 MB |
-| `rabbitmq` | 3-management-alpine | 176 MB |
-| `solr` | 9.5.0 | 580 MB |
-
-> [!NOTE]
-> Image sizes are reference values and may change between releases.
-
-### Dockerfiles
-
-| File | Purpose |
-|---|---|
-| `Dockerfile.backend` | Builds the Exchange server image (`bytem-be`) |
-| `Dockerfile.bot` | Builds the bot image (`bytem-bot`) |
-| `Dockerfile.bytemApp` | Builds the React frontend served by Nginx and includes Certbot |
-
-### Services and Port Bindings
-
-Format: `host_port:container_port`
-
-| # | Container | Description | Ports |
-|---|---|---|---|
-| 1 | `bytem-app` | React frontend | `80:80`, `443:443`, `8448:8448` — Matrix federation via Nginx |
-| 2 | `bytem-be` | Exchange server | `9999:9999` — FE, `3000:3000` — Exchange |
-| 3 | `bytem-bot` | Bot(s) | `4000:4000` |
-| 4 | `bytem-pwa` | Progressive Web App frontend | `8002:3002` |
-| 5 | `bytem-rabbitmq` | RabbitMQ message queues | `5672:5672` — server, `15672:15672` — UI |
-| 6 | `bytem-solr` | Apache Solr search engine | `8983:8983` |
-| 7 | `bytem-synapse` | Matrix Synapse server | `8008:8008` — default, `8009:8009` — sliding sync |
-| 8 | `bytem-synapse-db` | PostgreSQL for Synapse | `5432:5432` |
-
-### Persistent Volumes
-
-| Volume | Used by | Purpose |
-|---|---|---|
-| `bytem-rabbitmq-data` | `bytem-rabbitmq` | RabbitMQ server data |
-| `bytem-rabbitmq-log` | `bytem-rabbitmq` | RabbitMQ server logs |
-| `bytem-synapse-db-data` | `bytem-synapse-db` | PostgreSQL data for Matrix Synapse |
-| `bytem-solr-data` | `bytem-solr` | Solr core data and configsets |
-
-### Host-Mounted Configuration
-
-| Path | Mounted into | Purpose |
-|---|---|---|
-| `generated_config_files/` | `bytem-app`, `bytem-synapse` | Nginx configs and `homeserver.yaml` |
-| `certbot/` | `bytem-app` | SSL certificates |
-| `.env.bytem` | `bytem-be`, `bytem-bot` | Environment variables and configuration options |
-
-## Troubleshooting
-
-| Symptom | Check / Action |
-|---|---|
-| Login page does not load | Run `sudo docker ps` and confirm `bytem-app` is up |
-| `Cannot reach homeserver` | Rerun `sudo ./install.sh` |
-| Login fails after fresh install | Hard refresh the browser with `Ctrl+Shift+R` |
-| Login fails / Synapse errors | Run `sudo docker logs bytem-synapse --tail 50` |
-| SSL is not working | Rerun `sudo ./certbot.sh` |
-| Root disk is filling up | Move Docker data to dedicated storage; see **Install Docker and Clone bytEM** |
-
-## Support
-
-### Matrix Support Room
-
-For installation and configuration help:
-
-- **Room:** `#bytem-support:matrix.liberbyte.com`
-- **Direct link:** [#bytem-support:matrix.liberbyte.com](https://matrix.to/#/#bytem-support:matrix.liberbyte.com)
-
-To join through Element:
-
-1. Open [app.element.io](https://app.element.io)
-2. Select **Explore**
-3. Search for `#bytem-support:matrix.liberbyte.com`
-4. Join the room
-
-## bytEM User Guide
-
-For product usage after installation:
-
-https://github.com/liberbyte/bytEM-public/blob/main/BYTEM_USER_GUIDE.md
+| Symptom | Check |
+| --- | --- |
+| nginx repeatedly restarts | Both certificate paths exist under `certbot/conf/live/`; run `./certbot.sh` |
+| Let's Encrypt validation fails | Both DNS names point here, port 80 is open, and no unrelated process occupies it |
+| bot/backend exits after startup | `BOT_USERNAME` and `BOT_PASSWORD` match the separate bot account created by Synapse |
+| test login fails | Use `TEST_USERNAME`/`TEST_PASSWORD`, not the bot credentials |
+| Synapse cannot start | Check `docker compose logs bytem-synapse bytem-synapse-db` and verify stable secrets in `.env` |
+| cross-instance exchange fails | Run `./whitelist-sync.sh` and check market-list reachability |
+| old `/pwa/...` bookmark | nginx redirects it to the equivalent root PWA route |
