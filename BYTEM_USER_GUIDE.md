@@ -10,12 +10,33 @@
 ## Workflow
 
 ```text
-SUPPLY                                  DEMAND
+SUPPLY                                               DEMAND
 
-Identify → Supply → Publish → Discover → Find → Exchange
-  DEID                                              │
-                                                    ▼
-                                               Demand Room
+Create Supply Room
+        │
+        ▼
+Set DEID + Class
+        │
+        ▼
+Add Data / References
+        │
+        ▼
+Update Supply
+        │
+        ▼
+Publish + Index ───────────────► Discover in Index
+                                          │
+                                          ▼
+                                         Find
+                                          │
+                                          ▼
+                                       Exchange
+                                          │
+                                          ▼
+                                      Demand Room
+                                          │
+                                          ▼
+                                 View Exchanged Data
 ```
 
 ### Quick Start
