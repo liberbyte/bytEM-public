@@ -51,7 +51,7 @@ services:
       bytem-synapse:
         condition: service_healthy
     env_file:
-      - .env.bytem
+      - .env
     environment:
       - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
       - SOLR_URL=http://bytem-solr:8983
@@ -59,7 +59,7 @@ services:
       - 9999:9999
       - 3000:3000
     volumes:
-      - ./.env.bytem:/app/.env.bytem
+      - ./.env:/app/.env
       - ./certbot/conf:/etc/letsencrypt
     dns:
       - 8.8.8.8
@@ -80,7 +80,7 @@ services:
       bytem-synapse:
         condition: service_healthy
     env_file:
-      - .env.bytem
+      - .env
     environment:
       - RABBITMQ_URL=amqp://bytem-rabbitmq:5672/bytem
       - SOLR_URL=http://bytem-solr:8983
@@ -88,7 +88,7 @@ services:
     ports:
       - 4000:4000
     volumes:
-      - ./.env.bytem:/app/.env.bytem
+      - ./.env:/app/.env
     logging: *logging-standard
     networks:
       - bytem-network
@@ -99,7 +99,7 @@ services:
     hostname: bytem-rabbitmq
     restart: always
     env_file:
-      - .env.bytem
+      - .env
     ports:
       - 5672:5672
       - 15672:15672
