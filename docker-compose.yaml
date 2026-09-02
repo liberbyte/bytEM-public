@@ -15,7 +15,7 @@ x-logging-verbose: &logging-verbose
 services:
 
   bytem-app:
-    image: liberbyteadmin/bytem:app
+    image: liberbyteadmin/bytem:nginx
     container_name: bytem-app
     hostname: bytem-app
     restart: always
