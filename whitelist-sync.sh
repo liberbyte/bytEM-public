@@ -12,18 +12,18 @@ if [[ ! -f "$SCRIPT_DIR/docker-compose.yaml" ]]; then
     exit 1
 fi
 
-# Load environment variables from .env.bytem
-if [[ -f "$SCRIPT_DIR/.env.bytem" ]]; then
-    source "$SCRIPT_DIR/.env.bytem"
-    echo "✅ Loaded configuration from .env.bytem"
+# Load environment variables from .env
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+    source "$SCRIPT_DIR/.env"
+    echo "✅ Loaded configuration from .env"
 else
-    echo "❌ Error: .env.bytem file not found. Please run env_setup.sh first."
+    echo "❌ Error: .env file not found. Please run env_setup.sh first."
     exit 1
 fi
 
 # Validate MARKET_LIST is set
 if [[ -z "${MARKET_LIST:-}" ]]; then
-    echo "❌ Error: MARKET_LIST not found in .env.bytem. Please run env_setup.sh first."
+    echo "❌ Error: MARKET_LIST not found in .env. Please run env_setup.sh first."
     exit 1
 fi
 
