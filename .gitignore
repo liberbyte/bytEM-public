@@ -1,4 +1,6 @@
-# Environment files
+# Environment files. The bare `.env` needs its own line: `.env.*` matches
+# .env.bytem and .env.backup.* but NOT `.env` itself.
+.env
 .env.bytem
 .env.*
 !.env.template

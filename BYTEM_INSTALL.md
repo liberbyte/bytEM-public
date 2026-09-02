@@ -46,6 +46,13 @@ chmod +x env_setup.sh certbot.sh install.sh whitelist-sync.sh scripts/*.sh
 ./install.sh
 ```
 
+Instead of answering the `env_setup.sh` prompts, you can open `install.html` in
+a browser and fill in a form. Served from this directory it reads an existing
+`.env` and carries its settings and secrets forward; opened straight off disk it
+takes a pasted one. Either way it produces the same file and `install.sh` still
+does the install. `env_setup.sh` remains the scriptable path and the only one
+that works headless.
+
 The setup asks separately for:
 
 1. Test/admin account credentials, used by a person to sign in.
