@@ -27,10 +27,12 @@ Update Supply
 Publish + Index ───────────────► Discover in Index
                                           │
                                           ▼
-                                         Find
+                                     Find(Optional)
+                               (to review Reference DEID)
                                           │
                                           ▼
                                        Exchange
+                               (Find runs automatically)
                                           │
                                           ▼
                                       Demand Room
@@ -214,7 +216,7 @@ bytEM creates or uses a Demand Room where the requested and exchanged data can b
 
 ### 3. Logging In
 
-**Login URL:** `https://bytem.alpha.cities.app/login`
+**Login URL:** `https://bytem.your.domain/login`
 
 #### Sign In
 
@@ -233,6 +235,8 @@ After sign-in, bytEM opens **Overview**.
 #### Create a New Matrix Account
 
 If you do not have a Matrix account, click **Create one** below the login form.
+
+**Sign Up URL:** `https://bytem.your.domain/signup`
 
 A registration form will open.
 
@@ -266,7 +270,7 @@ The **Data Rooms List** shows rooms available to you.
 | --- | --- |
 | 🟢 Green | Supply Room |
 | 🟣 Purple | Demand Room |
-| Grey | You have not joined the room yet |
+| ⚪ Grey | You have not joined the room yet |
 
 If you have not joined a room, click the room to see the available options. From there, you can join the room if you want to.
 
@@ -582,7 +586,7 @@ After creating the Demand Room, open it from the **Data Rooms List**.
 
 Open:
 
-`https://bytem.alpha.cities.app/index-room`
+`https://bytem.your.domain/index-room`
 
 The **Data Index** lists publicly indexed data entities.
 
@@ -715,9 +719,10 @@ The Reference tab displays the Reference DEIDs included in the requested data.
 
 <img width="760" alt="Reference tab" src="https://github.com/user-attachments/assets/4e81f0e1-4802-4fd3-bda0-6c50d21c1a96" />
 
-#### Step 3 — Find the Reference DEID
 
-Before exchanging the data, you should first perform a **Find**.
+#### Step 3 — Find the Reference DEID (Optional)
+
+You can use **Find** to review information about a Reference DEID before exchanging it.
 
 You can select the Reference DEID and use **See Overview**.
 
@@ -735,12 +740,13 @@ find https://waterworks.example/de/frankfurt/water-quality
 
 The **Find** action shows information about the referenced data.
 
-> [!IMPORTANT]
-> Perform **Find** first before exchanging the Reference DEID.
+> [!NOTE]
+> Running **Exchange** automatically performs the  Find process. You can use **Find** separately when you want to review the Reference DEID before exchanging it.
+
 
 #### Step 4 — Exchange the Reference DEID
 
-After finding the Reference DEID and reviewing the available data, you can perform the exchange.
+To exchange the Reference DEID,
 
 Use:
 
@@ -754,7 +760,7 @@ For example:
 exchange-data https://waterworks.example/de/frankfurt/water-quality
 ```
 
-This exchanges the data for the selected DEID into the Demand Room.
+When you run the exchange, bytEM automatically performs the Find process and then exchanges the data into the Demand Room.
 
 <img width="760" alt="Exchange Reference data" src="https://github.com/user-attachments/assets/19cde1bb-ed2e-4149-9dbc-d61ec42d9848" />
 
@@ -908,7 +914,7 @@ find <deid_url>
 Finds information for a specific DEID.
 
 > [!TIP]
-> **Recommended:** Perform **Find** before attempting to exchange a Reference DEID.
+> **Optional:** Use **Find** when you want to review information about a Reference DEID before exchanging it.
 
 #### Exchange Data
 
@@ -961,14 +967,12 @@ It is added using the **Reference** supply type and can later be found and excha
 
 #### Do I need to perform Find before Exchange?
 
-Yes.
+No. **Find is optional.**
 
-The recommended process is:
+You can use **Find** to review information about a Reference DEID before exchanging it.
 
-1. Open the **Reference** tab.
-2. Perform **Find** for the Reference DEID.
-3. Review the available information.
-4. Perform **Exchange** if you have the required permissions.
+When you run **Exchange**, bytEM automatically performs the Find process.
+
 
 #### Can every user exchange data?
 
@@ -1030,7 +1034,6 @@ This can happen after data has been uploaded.
 
 If you need a different DEID, you may need to create a new Supply Room.
 
-
 ### 18. Getting Help
 
 #### Use the Terminal
@@ -1043,9 +1046,12 @@ help
 
 to see the commands available in your current location.
 
-#### Contact Your Administrator
+#### Contact Support
 
-If you need additional help, contact your bytEM administrator or your organisation's support channel.
+If you need additional help, contact your bytEM administrator or join the bytEM administrator support room.
 
+* **Support Room:** `#bytem-install-admin:matrix.liberbyte.com`
+* **Direct link:** [#bytem-install-admin:matrix.liberbyte.com](https://matrix.to/#/#bytem-install-admin:matrix.liberbyte.com)
 
 *bytEM User Guide — © 2026*
+
