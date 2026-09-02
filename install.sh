@@ -109,7 +109,7 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
         log "Recent logs from ${SYNAPSE_CONTAINER_NAME}:"
         sudo docker logs --tail 20 "${SYNAPSE_CONTAINER_NAME}" 2>&1 || true
         log "Please check the logs above for errors. Common issues:"
-        log "  1. Database password mismatch - ensure POSTGRES_PASSWORD matches SYNAPSE_POSTGRES_PASSWORD in .env.bytem"
+        log "  1. Database password mismatch - ensure POSTGRES_PASSWORD matches SYNAPSE_POSTGRES_PASSWORD in .env"
         log "  2. Database not ready - synapse container may need more time"
         exit 1
     fi
@@ -155,9 +155,9 @@ BOT_TOKEN=$(sudo docker exec "${SYNAPSE_CONTAINER_NAME}" curl -s -X POST "${MATR
 
 if [ -n "$BOT_TOKEN" ] && [ "$BOT_TOKEN" != "null" ]; then
     log "Bot token obtained successfully: ${BOT_TOKEN:0:20}..."
-    # Update .env.bytem with the new token
-    sed -i "s/BOT_USER_ACCESS_TOKEN=.*/BOT_USER_ACCESS_TOKEN=${BOT_TOKEN}/" .env.bytem
-    log "Updated .env.bytem with new bot token."
+    # Update .env with the new token
+    sed -i "s/BOT_USER_ACCESS_TOKEN=.*/BOT_USER_ACCESS_TOKEN=${BOT_TOKEN}/" .env
+    log "Updated .env with new bot token."
 else
     log "Warning: Could not obtain bot token automatically. Trying alternative method..."
     # Alternative: try with admin user credentials
@@ -168,8 +168,8 @@ else
     
     if [ -n "$BOT_TOKEN" ] && [ "$BOT_TOKEN" != "null" ]; then
         log "Bot token obtained with admin credentials: ${BOT_TOKEN:0:20}..."
-        sed -i "s/BOT_USER_ACCESS_TOKEN=.*/BOT_USER_ACCESS_TOKEN=${BOT_TOKEN}/" .env.bytem
-        log "Updated .env.bytem with new bot token."
+        sed -i "s/BOT_USER_ACCESS_TOKEN=.*/BOT_USER_ACCESS_TOKEN=${BOT_TOKEN}/" .env
+        log "Updated .env with new bot token."
     else
         log "ERROR: Could not obtain bot token. Manual intervention required."
     fi
@@ -196,7 +196,7 @@ fi
 
 # Fix frontend hardcoded domains
 header_message "Fixing frontend configuration"
-source .env.bytem
+source .env
 
 # Wait for container to be ready
 sleep 5
