@@ -21,7 +21,7 @@ services:
     restart: always
     mem_limit: 512m
     env_file:
-      - .env.bytem
+      - .env
     environment:
       CONFIG_TYPE: ${CONFIG_TYPE}
       EXCH_SERVER: ${EXCH_SERVER}
@@ -138,7 +138,7 @@ services:
       bytem-synapse-db:
         condition: service_healthy
     env_file:
-      - .env.bytem
+      - .env
     environment:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
     ports:
@@ -164,7 +164,7 @@ services:
     hostname: bytem-synapse-db
     restart: always
     env_file:
-      - .env.bytem
+      - .env
     environment:
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     ports:
@@ -205,7 +205,7 @@ services:
     depends_on:
       - bytem-be
     env_file:
-      - .env.bytem
+      - .env
     environment:
       - NEXT_PUBLIC_API_BASE_URL=${API_HOST}
       - PWA_URL=${API_HOST}/
