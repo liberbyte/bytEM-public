@@ -1,123 +1,242 @@
-# bytEM installation and upgrade guide
+# bytEM Installation and Upgrade Guide
 
 ## Architecture
 
-The public installer pulls the images produced by the private/source
-repository's GitHub Actions workflow:
+The public installer pulls the images produced by the private/source repository's GitHub Actions workflow:
 
-| Service | Image | Purpose |
-| --- | --- | --- |
-| `bytem-nginx` | `liberbyteadmin/bytem:nginx` | TLS, reverse proxy, Matrix discovery and federation |
-| `bytem-pwa` | `liberbyteadmin/bytem:pwa` | The single merged frontend |
-| `bytem-be` | `liberbyteadmin/bytem:be` | API gateway |
-| `bytem-bot` | `liberbyteadmin/bytem:bot` | Matrix workflow bot |
-| `bytem-synapse` | `liberbyteadmin/bytem:synapse` | Matrix Synapse 1.159 with bytEM modules |
-| `bytem-solr` | `liberbyteadmin/bytem:solr` | Search index |
+| Service         | Image                          | Purpose                                             |
+| --------------- | ------------------------------ | --------------------------------------------------- |
+| `bytem-nginx`   | `liberbyteadmin/bytem:nginx`   | TLS, reverse proxy, Matrix discovery and federation |
+| `bytem-pwa`     | `liberbyteadmin/bytem:pwa`     | The single merged frontend                          |
+| `bytem-be`      | `liberbyteadmin/bytem:be`      | API gateway                                         |
+| `bytem-bot`     | `liberbyteadmin/bytem:bot`     | Matrix workflow bot                                 |
+| `bytem-synapse` | `liberbyteadmin/bytem:synapse` | Matrix Synapse with bytEM modules                   |
+| `bytem-solr`    | `liberbyteadmin/bytem:solr`    | Search index                                        |
 
 PostgreSQL and RabbitMQ use their upstream images.
 
-There is no `bytem-app` service and no generated host-side nginx or Synapse
-configuration. The nginx and Synapse images generate their configuration from
-`.env`. Synapse data, including its signing key and media, lives in the
-`bytem-synapse-data` volume.
+There is no `bytem-app` service and no generated host-side nginx or Synapse configuration. The nginx and Synapse images generate their configuration from `.env`. Synapse data, including its signing key and media, lives in the `bytem-synapse-data` volume.
+
+---
 
 ## Prerequisites
 
-- Docker Engine with Compose v2 (`docker compose version`)
-- at least 8 GB RAM available for the Synapse container limit
-- DNS A/AAAA records for the application and Matrix names
-- inbound TCP 80, 443, and 8448
-- outbound HTTPS for image pulls and federation market-list retrieval
+Before installing bytEM, make sure the following requirements are available:
+
+* Docker Engine with Compose v2
+* At least 8 GB RAM available for the Synapse container limit
+* DNS A/AAAA records for the application and Matrix names
+* Inbound TCP ports `80`, `443`, and `8448`
+* Outbound HTTPS access for Docker image pulls and federation market-list retrieval
+
+Verify Docker and Docker Compose:
+
+```bash
+docker --version
+docker compose version
+```
+
+### Docker permissions
+
+The installer uses Docker commands. If your user does not have permission to access the Docker socket, you may see an error similar to:
+
+```text
+permission denied while trying to connect to the Docker daemon socket
+```
+
+You can either run the installer with `sudo`:
+
+```bash
+sudo ./install.sh
+```
+
+Or add your user to the Docker group:
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+After running this command, log out and log back in before using Docker without `sudo`.
+
+Verify that Docker works:
+
+```bash
+docker ps
+```
+
+> [!NOTE]
+> Membership in the `docker` group provides privileged access to the Docker daemon.
 
 For a base domain `example.com` and prefix `bm4`, setup creates:
 
-- `bytem.bm4.example.com`
-- `matrix.bytem.bm4.example.com`
+* `bytem.bm4.example.com`
+* `matrix.bytem.bm4.example.com`
 
 Both names must resolve to the Docker host before certificate issuance.
 
-## Fresh installation
+---
+
+# Fresh Installation
+
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/liberbyte/bytEM-public.git
 cd bytEM-public
 chmod +x env_setup.sh certbot.sh install.sh whitelist-sync.sh scripts/*.sh
-./env_setup.sh
-./install.sh
 ```
 
-Instead of answering the `env_setup.sh` prompts, you can open `install.html` in
-a browser and fill in a form. Served from this directory it reads an existing
-`.env` and carries its settings and secrets forward; opened straight off disk it
-takes a pasted one. Either way it produces the same file and `install.sh` still
-does the install. `env_setup.sh` remains the scriptable path and the only one
-that works headless.
+## 2. Configure bytEM using the GUI wizard
 
-### Opening the wizard
+The easiest way to configure a new bytEM installation is to use the graphical installation wizard:
 
-On a machine with a desktop, open the file directly:
-
-```bash
-xdg-open install.html      # macOS: open install.html
+```text
+install.html
 ```
 
-That works everywhere, but a `file://` page cannot read a sibling `.env`, so on
-an upgrade it asks you to paste the old one.
+### Serve the wizard locally
 
-To let it read `.env` itself, serve the directory to loopback only and browse to
-`http://127.0.0.1:8080/install.html`:
+Serve the repository directory locally:
 
 ```bash
 python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-On a headless server, do the same there and forward the port over SSH rather
-than exposing it:
+Then open the installation wizard in your browser:
 
-```bash
-ssh -L 8080:127.0.0.1:8080 user@your-server
-# then, in that session:
-cd bytEM-public && python3 -m http.server 8080 --bind 127.0.0.1
+```text
+http://127.0.0.1:8080/install.html
 ```
 
-Open `http://127.0.0.1:8080/install.html` in your own browser. Stop the server
-when you are done.
+> [!NOTE]
+> Serving `install.html` through a local HTTP server is the recommended method.
 
-`--bind 127.0.0.1` is not optional. Without it the server listens on every
-interface and serves `.env` — every credential for the instance — to anyone who
-can reach the port. The wizard shows a red warning if it is loaded over a
-non-loopback address for this reason.
+Alternatively, if direct file access is supported in your environment, on Linux you can open it with:
 
-The setup asks separately for:
+```bash
+xdg-open install.html
+```
 
-1. Test/admin account credentials, used by a person to sign in.
-2. Bot account credentials, used only by `bytem-be` and `bytem-bot`.
+The GUI wizard guides you through the installation configuration and creates the required `.env` configuration.
 
-Synapse creates both accounts on its first healthy start. They must have
-different usernames and should have different passwords. SSO client credentials
-are no longer part of installation.
+The wizard includes configuration for:
 
-Infrastructure passwords and stable Synapse secrets are generated
-automatically. Store `.env` in a password manager or secure backup and never
-commit it.
+1. Domains
+2. Test/admin account credentials
+3. Bot account credentials
+4. Federation and TLS settings
 
-`install.sh` then:
+After completing the wizard, continue with the installation.
 
-1. validates Compose interpolation;
-2. pulls the published images;
-3. obtains missing TLS certificates;
-4. migrates legacy Synapse `/data`, when present;
-5. starts the stack and waits for health checks.
+## 3. Run the installer
 
-The backend and bot authenticate with `BOT_USERNAME` and `BOT_PASSWORD` at
-runtime. They refresh the bot access token in memory. Installation does not put
-a test-user token into bot settings, write a token back into `.env`, or restart
-the stack merely to propagate a token.
+If Docker is configured for your user:
 
-## TLS
+```bash
+./install.sh
+```
 
-`install.sh` calls `certbot.sh` automatically when either certificate is
-missing. For renewal:
+If you receive a Docker socket permission error, either configure Docker group access as described in the prerequisites or run:
+
+```bash
+sudo ./install.sh
+```
+
+The installer:
+
+1. Validates the configuration.
+2. Pulls the published Docker images.
+3. Obtains missing TLS certificates.
+4. Migrates legacy Synapse `/data`, when present.
+5. Starts the Docker stack.
+6. Waits for the required health checks.
+
+---
+
+## Alternative: Command-Line Configuration
+
+For headless servers or environments without a browser, use:
+
+```bash
+./env_setup.sh
+```
+
+Then run:
+
+```bash
+./install.sh
+```
+
+If Docker permissions are not configured for your user:
+
+```bash
+sudo ./install.sh
+```
+
+The `env_setup.sh` script remains the supported command-line and headless installation path.
+
+---
+
+# Account Credentials
+
+The setup requires two separate accounts.
+
+## Test/admin account
+
+The test/admin account is used by a person to sign in and exercise the bytEM instance.
+
+Example:
+
+```text
+TEST_USERNAME=test
+TEST_PASSWORD=your-password
+```
+
+## Bot account
+
+The bot account is used internally by `bytem-be` and `bytem-bot`.
+
+Example:
+
+```text
+BOT_USERNAME=bot
+BOT_PASSWORD=your-bot-password
+```
+
+Nobody should normally sign in manually using the bot account.
+
+The usernames must be different, and the test/admin and bot accounts should use different passwords.
+
+Synapse creates both accounts during the initial installation.
+
+Infrastructure passwords and stable Synapse secrets are generated automatically. Store `.env` in a password manager or secure backup and never commit it.
+
+---
+
+# Password Requirements
+
+Passwords are validated by the installation scripts and GUI wizard.
+
+Passwords may contain:
+
+* Letters
+* Numbers
+* Only the special characters explicitly supported by the installation wizard
+
+> [!IMPORTANT]
+> Do not use unsupported special characters in installation passwords. For example, `#` is not supported and may cause the password to be rejected.
+
+Use only the characters permitted by the GUI wizard or `env_setup.sh`.
+
+If a password is rejected during setup, create a new password using only letters, numbers, and the supported special characters.
+
+---
+
+# TLS
+
+`install.sh` calls `certbot.sh` automatically when either certificate is missing.
+
+For certificate renewal:
 
 ```bash
 ./certbot.sh
@@ -130,86 +249,158 @@ For local-only testing where public Let's Encrypt validation is impossible:
 ./install.sh
 ```
 
-Self-signed certificates cause browser warnings and are not suitable for Matrix
-federation in production.
+If your Docker installation requires `sudo`, use:
 
-## Upgrade an existing installation
+```bash
+sudo ./certbot.sh --self-signed
+sudo ./install.sh
+```
 
-Back up state first:
+Self-signed certificates cause browser warnings and are not suitable for Matrix federation in production.
+
+---
+
+# Upgrade an Existing Installation
+
+Back up the existing state first:
 
 ```bash
 ./scripts/pre_reinstall_check.sh
 cp .env "/secure/location/bytem.env.$(date +%F)"
 ```
 
-Then update and install:
+Then update the repository:
 
 ```bash
 git pull --ff-only
+```
+
+Run the installer:
+
+```bash
 ./install.sh
 ```
 
-The installer does not run `docker compose down -v`, prune all images, replace
-`.env`, or delete certificates. The existing PostgreSQL, Solr, RabbitMQ, and
-Synapse named volumes are retained.
+If Docker permissions are not configured for your user:
 
-When upgrading from the old `bytem-app` Compose layout, the installer detects
-`generated_config_files/synapse_config`. If the new `bytem-synapse-data` volume
-is empty, it copies the old `/data` contents into that volume before starting
-Synapse. This preserves the server signing key and media. The old
-`generated_config_files` directory is not deleted automatically; remove it only
-after verifying the upgraded deployment and retaining a backup.
+```bash
+sudo ./install.sh
+```
 
-If you intentionally need a replacement `.env`, the setup backs up the old one:
+The installer does not run `docker compose down -v`, prune all images, replace `.env`, or delete certificates.
+
+The existing PostgreSQL, Solr, RabbitMQ, and Synapse named volumes are retained.
+
+When upgrading from the old `bytem-app` Compose layout, the installer detects:
+
+```text
+generated_config_files/synapse_config
+```
+
+If the new `bytem-synapse-data` volume is empty, it copies the old `/data` contents into that volume before starting Synapse. This preserves the server signing key and media.
+
+The old `generated_config_files` directory is not deleted automatically. Remove it only after verifying the upgraded deployment and retaining a backup.
+
+If you intentionally need a replacement `.env`, use:
 
 ```bash
 ./env_setup.sh --force
 ```
 
-This is also the migration path for an old `.env` that used the bot as its test
-admin. Enter the existing domains plus new, separate account credentials. The
-script preserves existing database/search passwords and stable Synapse secrets
-unless you explicitly override those values in the command environment.
+This is also the migration path for an old `.env` that used the bot as its test admin. Enter the existing domains plus new, separate account credentials.
 
-Changing the Synapse secrets or losing its signing key can invalidate sessions
-or break federation identity, so do not regenerate them during a routine image
-upgrade.
+The script preserves existing database/search passwords and stable Synapse secrets unless you explicitly override those values.
 
-## Verification and operation
+> [!WARNING]
+> Changing Synapse secrets or losing its signing key can invalidate sessions or break federation identity. Do not regenerate these values during a routine image upgrade.
+
+---
+
+# Verification and Operation
+
+Check that all services are running:
 
 ```bash
 docker compose ps
+```
+
+Check the main service logs:
+
+```bash
 docker compose logs --tail 100 bytem-synapse bytem-be bytem-bot bytem-nginx
-set -a; source .env; set +a
+```
+
+Load the environment variables:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+Check the backend:
+
+```bash
 curl -fsS "https://${DOMAIN_NAME}/api/auth/health"
+```
+
+Check the Matrix server:
+
+```bash
 curl -fsS "https://${MATRIX_SERVER_NAME}/_matrix/client/versions"
 ```
 
-Run the end-to-end workflow with the test account stored in `.env`:
+Run the end-to-end workflow test:
 
 ```bash
 ./scripts/test_workflow.sh
 ```
 
-The test account and bot account remain separate: the test logs in and creates
-the test rooms; the bot is invited to process them.
+The test account and bot account remain separate:
 
-Synapse builds its federation whitelist at container start from
-`FEDERATION_MARKET_LIST_URL` (or `MARKET_LIST`). To fetch it again and inspect
-the resulting active list:
+* The test account logs in and creates the test rooms.
+* The bot is invited to process them.
+
+Synapse builds its federation whitelist at container start from `FEDERATION_MARKET_LIST_URL` (or `MARKET_LIST`).
+
+To fetch it again and inspect the resulting active list:
 
 ```bash
 ./whitelist-sync.sh
 ```
 
-## Common problems
+---
 
-| Symptom | Check |
-| --- | --- |
-| nginx repeatedly restarts | Both certificate paths exist under `certbot/conf/live/`; run `./certbot.sh` |
-| Let's Encrypt validation fails | Both DNS names point here, port 80 is open, and no unrelated process occupies it |
-| bot/backend exits after startup | `BOT_USERNAME` and `BOT_PASSWORD` match the separate bot account created by Synapse |
-| test login fails | Use `TEST_USERNAME`/`TEST_PASSWORD`, not the bot credentials |
-| Synapse cannot start | Check `docker compose logs bytem-synapse bytem-synapse-db` and verify stable secrets in `.env` |
-| cross-instance exchange fails | Run `./whitelist-sync.sh` and check market-list reachability |
-| old `/pwa/...` bookmark | nginx redirects it to the equivalent root PWA route |
+# Common Problems
+
+| Symptom                           | Solution                                                                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Docker socket permission denied   | Add your user to the Docker group using `sudo usermod -aG docker $USER`, log in again, or run the installer with `sudo ./install.sh` |
+| Password is rejected during setup | Use letters, numbers, and only the special characters supported by the installer. Do not use unsupported characters such as `#`      |
+| nginx repeatedly restarts         | Verify both certificate paths exist under `certbot/conf/live/`; run `./certbot.sh`                                                   |
+| Let's Encrypt validation fails    | Verify both DNS names point to this server, port `80` is open, and no unrelated process occupies the port                            |
+| bot/backend exits after startup   | Verify `BOT_USERNAME` and `BOT_PASSWORD` match the separate bot account                                                              |
+| test login fails                  | Use `TEST_USERNAME` and `TEST_PASSWORD`, not the bot credentials                                                                     |
+| Synapse cannot start              | Run `docker compose logs bytem-synapse bytem-synapse-db` and verify stable secrets in `.env`                                         |
+| cross-instance exchange fails     | Run `./whitelist-sync.sh` and check market-list reachability                                                                         |
+| old `/pwa/...` bookmark           | nginx redirects it to the equivalent root PWA route                                                                                  |
+
+---
+
+# Recommended Installation Flow
+
+```text
+Clone repository
+        ↓
+Start local web server
+        ↓
+Open install.html
+        ↓
+Complete GUI wizard
+        ↓
+Run ./install.sh
+        ↓
+Verify installation
+```
+
+The GUI wizard is the recommended installation method for users with browser access. `env_setup.sh` remains available for command-line and headless installations.
