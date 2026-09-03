@@ -226,7 +226,7 @@
     color: var(--ink-soft);
     margin-bottom: 6px;
   }
-  .field .hint { font-size: 13px; color: var(--ink-faint); margin: 6px 0 0; }
+  .hint { font-size: 13px; color: var(--ink-faint); margin: 6px 0 0; }
   input[type="text"], input[type="password"], input[type="email"], textarea, select {
     width: 100%;
     font-family: var(--mono);
@@ -244,6 +244,36 @@
     outline-offset: 2px;
   }
   input[aria-invalid="true"] { border-color: var(--danger); }
+  input[type="file"] {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px dashed var(--rule-strong);
+    border-radius: var(--radius);
+    padding: 10px 11px;
+    cursor: pointer;
+  }
+  input[type="file"]::file-selector-button {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 12px;
+    padding: 6px 13px;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    background: var(--sunk);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  input[type="file"]:hover { border-color: var(--accent); }
+
+  input:disabled, select:disabled {
+    background: var(--sunk);
+    color: var(--ink-soft);
+    cursor: not-allowed;
+  }
   .err {
     display: block;
     color: var(--danger);
@@ -457,11 +487,11 @@
           <span class="err" id="e-prefix" hidden></span>
         </div>
 
-        <p class="note" id="note-public">Before you run the installer, both derived names above must resolve to this host, and inbound TCP <code>80</code>, <code>443</code> and <code>8448</code> must reach it. Let's Encrypt issues per name over port 80; <code>8448</code> carries Matrix federation.</p>
+        <p class="hint" id="note-public" style="max-width:62ch">Both names need to resolve here, with TCP 80, 443 and 8448 reachable, by the time you run the installer — 80 for certificate issuance, 8448 for federation.</p>
 
         <p class="note" id="note-localhost" hidden>Names under <code>.localhost</code> are reserved for loopback by RFC 6761, and glibc and systemd-resolved answer them without any DNS or <code>/etc/hosts</code> entry — so this needs no configuration and works offline. If your resolver is one of the few that doesn't, add one line: <code>127.0.0.1 bytem.localhost matrix.bytem.localhost</code>.</p>
 
-        <p class="note warn" id="note-local" hidden><strong>A local instance cannot federate.</strong> Everything inside the stack works — the PWA, the API gateway, the bot, Synapse, Solr and RabbitMQ — and you can publish and index DEIDs, because a DEID is an identifier the stack never fetches. What needs a public name is exchange with <em>other</em> bytEM instances, which requires real TLS on port 8448. Certificates will be self-signed, so browsers warn once per name and you accept both.</p>
+        <p class="note" id="note-local" hidden><strong>Certificates are generated locally.</strong> <code>certbot.sh --self-signed</code> writes a 30-day certificate for each name with <code>openssl</code> — no Let's Encrypt, no DNS, no reachable ports. Your browser will warn once per name; accept both and it stops asking. For certificates your browser trusts outright, <code>mkcert -install</code> then <code>mkcert bytem.localhost matrix.bytem.localhost</code> into <code>certbot/conf/live/</code> works too. A local instance cannot federate: Everything inside the stack works — the PWA, the API gateway, the bot, Synapse, Solr and RabbitMQ — and you can publish and index DEIDs, because a DEID is an identifier the stack never fetches. What needs a public name is exchange with <em>other</em> bytEM instances, which requires real TLS on port 8448. Certificates will be self-signed, so browsers warn once per name and you accept both.</p>
 
         <p class="note" id="note-promote" hidden>Treat a local instance as disposable. Its Matrix name is baked into every MXID and room alias, so it cannot later be promoted to a public deployment — you would install fresh against the real domain.</p>
 
@@ -475,7 +505,7 @@
 
         <div class="field">
           <label for="f-tuser">Test / admin username</label>
-          <input type="text" id="f-tuser" placeholder="no default — env_setup.sh requires this too" spellcheck="false" autocomplete="off">
+          <input type="text" id="f-tuser" value="admin" spellcheck="false" autocomplete="off">
           <p class="hint">A person signs in with this to exercise the instance. Becomes a Synapse admin.</p>
           <span class="err" id="e-tuser" hidden></span>
         </div>
@@ -491,7 +521,7 @@
 
         <div class="field">
           <label for="f-buser">Bot username</label>
-          <input type="text" id="f-buser" placeholder="must differ from the account above" spellcheck="false" autocomplete="off">
+          <input type="text" id="f-buser" value="bot" spellcheck="false" autocomplete="off">
           <p class="hint">Used only by <code>bytem-be</code> and <code>bytem-bot</code>. Nobody signs in as this.</p>
           <span class="err" id="e-buser" hidden></span>
         </div>
@@ -564,9 +594,15 @@
 
         <p class="note warn"><strong>Regenerating Synapse secrets invalidates sessions and can break this server's federation identity.</strong> <code>REGISTRATION_SHARED_SECRET</code>, <code>SYNAPSE_MACAROON_SECRET_KEY</code>, <code>SYNAPSE_FORM_SECRET</code> and <code>JWT_SECRET</code> must survive an upgrade. So must the database and Solr passwords, or the existing volumes stop opening.</p>
 
+        <div class="field">
+          <label for="f-envfile">Choose your <code>.env</code> file</label>
+          <input type="file" id="f-envfile" accept=".env,text/plain">
+          <p class="hint">Read in the browser only — the file is not uploaded anywhere.</p>
+        </div>
+
         <div class="field" style="max-width:100%">
-          <label for="f-existing">Paste the current <code>.env</code></label>
-          <textarea id="f-existing" rows="7" spellcheck="false" placeholder="cat .env on the server, then paste the whole file here"></textarea>
+          <label for="f-existing">Or paste it</label>
+          <textarea id="f-existing" rows="7" spellcheck="false" placeholder="the contents of .env"></textarea>
           <p class="hint" id="carry-report">Nothing pasted — every secret below will be newly generated.</p>
         </div>
 
@@ -685,6 +721,8 @@
   var revealed = false;
   var current = 0;
   var mode = "public";
+  var publicDomain = "";
+  var DOMAIN_HINT = "The domain you control DNS for, without a scheme or trailing dot. On the host, hostname -d prints it.";
 
   // RFC 6761 reserves .localhost for loopback, and glibc / systemd-resolved
   // answer any label under it with 127.0.0.1 and ::1 — no DNS, no hosts file,
@@ -765,9 +803,6 @@
     else if (!RE_ENVVAL.test(s.tpass)) add(1, "tpass", "Contains a character that is unsafe in an env file.");
     if (!s.bpass) add(1, "bpass", "A bot password is required.");
     else if (!RE_ENVVAL.test(s.bpass)) add(1, "bpass", "Contains a character that is unsafe in an env file.");
-    if (s.tpass && s.bpass && s.tpass === s.bpass) {
-      add(1, "bpass", "The two passwords must differ — install.sh rejects a match.");
-    }
 
     if (s.email && !RE_ENVVAL.test(s.email)) add(2, "email", "Contains a character that is unsafe in an env file.");
     if (!s.market) add(2, "market", "A market list URL is required.");
@@ -900,7 +935,12 @@
     var probs = problems(s);
 
     // mode-dependent chrome
-    $("domain-field").hidden = s.isLocal;
+    // Local mode shows the name it will use rather than hiding the field —
+    // seeing "localhost" is clearer than an empty space where a domain was.
+    $("f-domain").disabled = s.isLocal;
+    $("domain-hint").textContent = s.isLocal
+      ? "Fixed for a local install. Everything is derived from it and stays on this machine."
+      : DOMAIN_HINT;
     $("note-localhost").hidden = !s.isLocal;
     $("note-public").hidden = s.isLocal;
     $("note-local").hidden = !s.isLocal;
@@ -908,6 +948,7 @@
     $("email-field").hidden = s.isLocal;
     $("fed-local").hidden = !s.isLocal;
     $("f-strict").disabled = s.isLocal;
+    $("f-email").placeholder = s.app ? "admin@" + s.app : "derived from your domain";
     $("mode-hint").textContent = s.isLocal
       ? "One machine, loopback names and self-signed certificates. No DNS records, no open ports."
       : "A reachable host with public DNS and Let's Encrypt certificates.";
@@ -1012,22 +1053,6 @@
     }
   }
 
-  // The paste-your-.env step only earns a place when pasting is the only way
-  // to get the file in. Served from the deployment directory the page reads it
-  // directly, so the step is removed and the remaining ones renumber.
-  function setUpgradeStepVisible(visible) {
-    var railButton = document.querySelector('#rail button[data-go="3"]');
-    railButton.hidden = !visible;
-    $("nav-after-fed").dataset.go = visible ? "3" : "4";
-    $("nav-before-install").dataset.go = visible ? "3" : "2";
-
-    var n = 1;
-    document.querySelectorAll("#rail button").forEach(function (b) {
-      if (b.hidden) return;
-      b.querySelector(".num").textContent = String(n++).padStart(2, "0");
-    });
-  }
-
   function goto(step) {
     current = step;
     document.querySelectorAll(".panel").forEach(function (p) {
@@ -1061,7 +1086,17 @@
 
   document.addEventListener("click", function (e) {
     var m = e.target.closest("[data-mode]");
-    if (m) { mode = m.dataset.mode; render(); return; }
+    if (m) {
+      if (m.dataset.mode === "local" && mode !== "local") {
+        publicDomain = $("f-domain").value;
+        $("f-domain").value = LOCAL_BASE;
+      } else if (m.dataset.mode === "public" && mode !== "public") {
+        $("f-domain").value = publicDomain;
+      }
+      mode = m.dataset.mode;
+      render();
+      return;
+    }
 
     var go = e.target.closest("[data-go]");
     if (go) { goto(Number(go.dataset.go)); return; }
@@ -1084,6 +1119,31 @@
     if (e.target.id === "btn-copy-env") { copy($("out-env").dataset.raw || "", e.target); return; }
     if (e.target.id === "btn-copy-run") { copy($("out-run").textContent, e.target); return; }
     if (e.target.id === "btn-copy-verify") { copy($("out-verify").textContent, e.target); return; }
+  });
+
+  // FileReader works on a user-picked file under file:// too, which is why the
+  // picker is offered everywhere and the fetch below only where it can run.
+  $("f-envfile").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var text = String(reader.result);
+      var env = parseEnv(text);
+      if (!env.BYTEM_DOMAIN && !env.DOMAIN_NAME && !env.MATRIX_SERVER_NAME) {
+        banner("exposed", "That file has no bytEM settings in it.",
+          "Expected a deployment <code>.env</code> containing BYTEM_DOMAIN or MATRIX_SERVER_NAME. Nothing was changed.");
+        return;
+      }
+      $("f-existing").value = text;
+      adopt(env);
+      render();
+      var kept = CARRYABLE.filter(function (k) { return !!env[k]; }).length;
+      banner("found", "Loaded " + file.name + ".",
+        "Adopted its settings and kept " + kept + " of " + CARRYABLE.length +
+        " infrastructure secrets. Change anything you want changed.");
+    };
+    reader.readAsText(file);
   });
 
   document.addEventListener("input", render);
@@ -1158,7 +1218,7 @@
   // whether or not a file turns out to be there. Opened off disk: keep it,
   // because pasting is then the only route and losing the old secrets would
   // break an existing instance.
-  setUpgradeStepVisible(location.protocol === "file:");
+  if (mode === "local") $("f-domain").value = LOCAL_BASE;
 
   if (location.protocol !== "file:") {
     fetch(".env", { cache: "no-store" }).then(function (r) {

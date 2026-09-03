@@ -29,8 +29,6 @@ for variable_name in "${required[@]}"; do
 done
 [ "$MATRIX_ADMIN_USERNAME" != "$BOT_USERNAME" ] || \
   die "The test/admin and bot usernames are mixed together. Re-run ./env_setup.sh --force and enter separate accounts."
-[ "$MATRIX_ADMIN_PASSWORD" != "$BOT_PASSWORD" ] || \
-  die "The test/admin and bot passwords must be different. Re-run ./env_setup.sh --force."
 
 log "Validating deployment configuration"
 docker compose --env-file .env config --quiet

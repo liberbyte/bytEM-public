@@ -116,7 +116,6 @@ BOT_USERNAME=${BOT_USERNAME,,}
 [[ "$TEST_USERNAME" =~ ^[a-z0-9._=-]+$ ]] || die "Invalid test username."
 [[ "$BOT_USERNAME" =~ ^[a-z0-9._=-]+$ ]] || die "Invalid bot username."
 [ "$TEST_USERNAME" != "$BOT_USERNAME" ] || die "Test and bot usernames must be different."
-[ "$TEST_PASSWORD" != "$BOT_PASSWORD" ] || die "Test and bot passwords must be different."
 
 for credential in TEST_PASSWORD BOT_PASSWORD; do
   validate_env_value "$credential" "${!credential}"
