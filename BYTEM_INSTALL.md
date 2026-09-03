@@ -53,6 +53,41 @@ takes a pasted one. Either way it produces the same file and `install.sh` still
 does the install. `env_setup.sh` remains the scriptable path and the only one
 that works headless.
 
+### Opening the wizard
+
+On a machine with a desktop, open the file directly:
+
+```bash
+xdg-open install.html      # macOS: open install.html
+```
+
+That works everywhere, but a `file://` page cannot read a sibling `.env`, so on
+an upgrade it asks you to paste the old one.
+
+To let it read `.env` itself, serve the directory to loopback only and browse to
+`http://127.0.0.1:8080/install.html`:
+
+```bash
+python3 -m http.server 8080 --bind 127.0.0.1
+```
+
+On a headless server, do the same there and forward the port over SSH rather
+than exposing it:
+
+```bash
+ssh -L 8080:127.0.0.1:8080 user@your-server
+# then, in that session:
+cd bytEM-public && python3 -m http.server 8080 --bind 127.0.0.1
+```
+
+Open `http://127.0.0.1:8080/install.html` in your own browser. Stop the server
+when you are done.
+
+`--bind 127.0.0.1` is not optional. Without it the server listens on every
+interface and serves `.env` — every credential for the instance — to anyone who
+can reach the port. The wizard shows a red warning if it is loaded over a
+non-loopback address for this reason.
+
 The setup asks separately for:
 
 1. Test/admin account credentials, used by a person to sign in.
