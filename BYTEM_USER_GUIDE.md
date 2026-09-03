@@ -28,7 +28,7 @@ Publish + Index ───────────────► Discover in Ind
                                           │
                                           ▼
                                      Find(Optional)
-                               (to review Reference DEID)
+                                (Review Reference DEID)
                                           │
                                           ▼
                                        Exchange
