@@ -188,7 +188,7 @@ From there, you can:
 3. Exchange the data if you have the required permissions.
 
 > [!IMPORTANT]
-> The user must have a **power level above 51** to perform an exchange.
+> The user must have a **power level 51 or higher** to perform an exchange.
 
 #### Supply and Demand
 
@@ -398,6 +398,10 @@ This also displays the DEID template.
 
 <img width="760" alt="Set DEID from Command tab" src="https://github.com/user-attachments/assets/d0f09d9a-5b50-4378-8f2c-afd6a6bfd6fb" />
 
+> [!NOTE]
+> The DEID must contain the full domain URL, for example: `https://bytem.your.domain/de/frankfurt/water-quality`. Make sure to use the correct domain for your instance.
+
+
 #### DEID Example
 
 A DEID is usually a URL that identifies your data.
@@ -409,6 +413,7 @@ https://waterworks.example/de/frankfurt/water-quality
 ```
 
 Choose a meaningful URL that clearly describes your data.
+
 
 > [!IMPORTANT]
 > Once data has been uploaded to a Supply Room, its DEID cannot be changed. Make sure you set the correct DEID before uploading data.
@@ -502,7 +507,7 @@ The following indicators should become ready:
 
 <img width="760" alt="Entity readiness" src="https://github.com/user-attachments/assets/ae39c95b-87db-4469-8c5f-72a327b4091c" />
 
-Once your data is exchangeable and indexed, it can be requested by users.
+Once your data is exchangeable and indexed, it can be requested by users on index page.
 
 
 ### 9. Add Reference Data
@@ -541,8 +546,7 @@ A Reference can contain a DEID such as:
 https://waterworks.example/de/frankfurt/water-quality
 ```
 
-This DEID identifies the data that you want to find and exchange later.
-
+This DEID identifies data that can be found and exchanged later.
 
 ## Accessing and Exchanging Data
 
@@ -724,7 +728,7 @@ The Reference tab displays the Reference DEIDs included in the requested data.
 
 You can use **Find** to review information about a Reference DEID before exchanging it.
 
-You can select the Reference DEID and use **See Overview**.
+You can select the Reference DEID and use **Find**.
 
 Or use the Terminal command:
 
@@ -769,7 +773,7 @@ When you run the exchange, bytEM automatically performs the Find process and the
 > [!IMPORTANT]
 > The exchange action requires the appropriate user permissions.
 
-The user must have a **power level above 51** to perform the exchange.
+The user must have a **power level 51 or higher** to perform the exchange.
 
 
 ### 13. View Your Exchanged Data
@@ -925,7 +929,7 @@ exchange-data <deid_url>
 Exchanges the data for the specified DEID.
 
 > [!IMPORTANT]
-> **Permission requirement:** The user must have a **power level above 51** to perform an exchange.
+> **Permission requirement:** The user must have a **power level 51 or higher** to perform an exchange.
 
 
 ### 15. Status Indicators
